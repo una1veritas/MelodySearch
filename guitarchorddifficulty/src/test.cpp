@@ -17,7 +17,7 @@ int SF[6][23] = {
 
 struct fingers { //指の構造体
 	vector<pair<int, int>> press; //押さえるフレット(first)と弦番号(second)のペア
-	bool push = false; //指が弦を押さえているかどうか
+	bool push; //指が弦を押さえているかどうか
 
 	fingers() : press(), push(false) {}
 
@@ -33,7 +33,7 @@ struct fingers { //指の構造体
 };
 
 struct form { //コードフォームの構造体
-	struct fingers fing[5]; //指の構造体の配列（コードフォーム）
+	fingers fing[5]; //指の構造体の配列（コードフォーム）
 	int w = 0; //難易度
 };
 
@@ -193,7 +193,7 @@ bool find(vector<pair<int, int>> seha, int string) {
 }
 
 //押さえている指の本数を返す
-int num(struct fingers fing[5]) {
+int num(fingers fing[5]) {
 	int k = 0;
 	for (int i = 0; i < 5; i++) {
 		if (fing[i].push == true) {
@@ -204,7 +204,7 @@ int num(struct fingers fing[5]) {
 }
 
 //与えられたコードフォームから押さえているフレットの幅を返す
-int width_all(struct fingers fing[5]) {
+int width_all(fingers fing[5]) {
 	int width, min = 100, max = 0;
 	for (int i = 0; i < 5; i++) {
 		if (fing[i].push == true) {
@@ -224,7 +224,7 @@ int width_all(struct fingers fing[5]) {
 }
 
 //与えられたコードフォームからセーハしている指の番号を返す
-vector<int> f_seha(struct fingers fing[5]) {
+vector<int> f_seha(fingers fing[5]) {
 	vector<int> f;
 	for (int i = 0; i < 5; i++) {
 		if (fing[i].push == true) {
@@ -237,7 +237,7 @@ vector<int> f_seha(struct fingers fing[5]) {
 }
 
 //与えられたコードフォームから隣り合う指の弦番号が離れているかを調べ、離れている指のペアを返す。
-vector<pair<int, int>> leave(struct fingers fing[5]) {
+vector<pair<int, int>> leave(fingers fing[5]) {
 	vector<pair<int, int>> neighbor;
 	int k = 0;
 	for (int i = 0; i < 4; i++) {
@@ -253,9 +253,9 @@ vector<pair<int, int>> leave(struct fingers fing[5]) {
 }
 
 //与えられたコードフォームから、弦を押さえている指の中で隣り合う指のフレットの幅が広い指のペアを返す。
-vector<struct d_fing> width_next(struct fingers fing[5]) {
-	struct d_fing d_fing;
-	vector<struct d_fing> vec_fing;
+vector<d_fing> width_next(fingers fing[5]) {
+	d_fing dfing;
+	vector<d_fing> vec_fing;
 	int k;
 	for (int i = 0; i < 5; i++) {
 		k = i + 1;
@@ -263,9 +263,9 @@ vector<struct d_fing> width_next(struct fingers fing[5]) {
 			for (k; i + k < 5; k++) {
 				if (fing[i + k].push == true) {
 					if (abs(fing[i].press[0].first - fing[i + k].press[0].first) > k) {
-						d_fing.nei_f = make_pair(i, i + k);
-						d_fing.d = abs(fing[i].press[0].first - fing[i + k].press[0].first);
-						vec_fing.push_back(d_fing);
+						dfing.nei_f = make_pair(i, i + k);
+						dfing.d = abs(fing[i].press[0].first - fing[i + k].press[0].first);
+						vec_fing.push_back(dfing);
 					}
 				}
 			}
@@ -275,7 +275,7 @@ vector<struct d_fing> width_next(struct fingers fing[5]) {
 }
 
 //与えた指板情報から、押さえ方として、各指に押さえる弦とフレットの組を与える。
-struct fingers press_fingers(vector<pair<int, int>> fb, struct fingers fing[5]) {
+fingers press_fingers(vector<pair<int, int>> fb, fingers fing[5]) {
 	vector<pair<int, int>> newfb(fb), tfb(fb); //並べ替え後の指板
 	vector<int> open_s = open(fb);
 	vector<pair<int, int>> ava_seha = barre(fb);
@@ -536,12 +536,12 @@ struct fingers press_fingers(vector<pair<int, int>> fb, struct fingers fing[5]) 
 }
 
 //与えられたコードフォームからそのコードフォームの難しさとそのコードフォーム自身を構造体にまとめて返す
-struct form eval_single(struct fingers fing[5]) {
-	struct form c_form;
+form eval_single(fingers fing[5]) {
+	form c_form;
 	int w = 0, w_n = 0, w_seha = 0, w_leave = 0, w_wida = 0, w_widn = 0;
 	vector<int> seha;
 	vector<pair<int, int>> l_pair;
-	vector<struct d_fing> dis_fing;
+	vector<d_fing> dis_fing;
 
 
 	/*for (int k = 0; k < 5; k++) {
@@ -634,7 +634,7 @@ struct form eval_single(struct fingers fing[5]) {
 }
 
 //与えられた二つのコード情報から、二つのコードのコードチェンジの難易度を返す。
-double eval_multiple(struct form before, vector<int> a_cc, struct form &after) {
+double eval_multiple(form before, vector<int> a_cc, form &after) {
 	double w;
 	int d = 0, w_a = 0, w_seha = 0, up = 0, down = 0, stay = 0, change = 0, up_down = 0, n_efect = 0, w_state = 0, n = 0;
 	after.w = 999;
@@ -642,8 +642,8 @@ double eval_multiple(struct form before, vector<int> a_cc, struct form &after) {
 	vector<vector<pair<int, int>>> list_afb; //指板
 	list_afb = candchord(a_cc); //CC後の指板状態の決定
 
-	struct fingers a_fing[5]; //コードフォーム
-	struct form a_form; //仮のコードフォームとその難易度
+	fingers a_fing[5]; //コードフォーム
+	form a_form; //仮のコードフォームとその難易度
 
 	for (int k = 0; k < list_afb.size(); k++) {
 		for (int l = 0; l < 5; l++) { //
@@ -749,11 +749,11 @@ double eval_multiple(struct form before, vector<int> a_cc, struct form &after) {
 //与えられたコード情報のリストから、そのリストの最大難易度を返す。
 double eval_part(vector<vector<int>> chord_list) {
 	vector<vector<pair<int, int>>> list_fb; //指板
-	struct form before, after;
+	form before, after;
 	before.w = 999;
-	struct fingers b_fing[5];
-	struct fingers a_fing[5]; //コードフォーム
-	struct form b_form; //仮のコードフォームとその難易度
+	fingers b_fing[5];
+	fingers a_fing[5]; //コードフォーム
+	form b_form; //仮のコードフォームとその難易度
 	double w, max = 0;
 	
 	for (int i = 0; i < chord_list.size(); i++) {
