@@ -1,12 +1,15 @@
 ﻿#define _GLIBCXX_DEBUG
 //#include <bits/stdc++.h>
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 using namespace std;
 //using std::cout;
 
-int SF[6][23] = {
+constexpr static int SF[6][23] = {
 	{29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51},//1弦
 	{24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46},//2弦
 	{20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42},//3弦
@@ -260,7 +263,7 @@ vector<d_fing> width_next(fingers fing[5]) {
 	for (int i = 0; i < 5; i++) {
 		k = i + 1;
 		if (fing[i].push == true) {
-			for (k; i + k < 5; k++) {
+			for ( ; i + k < 5; k++) {
 				if (fing[i + k].push == true) {
 					if (abs(fing[i].press[0].first - fing[i + k].press[0].first) > k) {
 						dfing.nei_f = make_pair(i, i + k);
@@ -280,7 +283,7 @@ fingers press_fingers(vector<pair<int, int>> fb, fingers fing[5]) {
 	vector<int> open_s = open(fb);
 	vector<pair<int, int>> ava_seha = barre(fb);
 	pair<int, int> p;
-	int i, d;
+	unsigned int i, d;
 	int j = 0;
 
 	for (int a = 0; a < fb.size(); a++) {						//
@@ -378,7 +381,7 @@ fingers press_fingers(vector<pair<int, int>> fb, fingers fing[5]) {
 					if (j == 2) { //薬指でセーハを用いる
 						bool it = find(ava_seha, tfb[i].second);
 						if (it == true) { //セーハができるかを判断
-							for (int k = 0; k <= ava_seha.size(); k++) {
+							for (unsigned int k = 0; k <= ava_seha.size(); k++) {
 								if (tfb[i].second == ava_seha[k].first) {
 									p = ava_seha[k];
 									break;
@@ -460,7 +463,7 @@ fingers press_fingers(vector<pair<int, int>> fb, fingers fing[5]) {
 			else if (j == 0) { //人差し指
 				bool it = find(ava_seha, tfb[i].second);
 				if (it == true) { //セーハができるかを判断
-					for (int k = 0; k <= ava_seha.size(); k++) {
+					for (unsigned int k = 0; k <= ava_seha.size(); k++) {
 						if (tfb[i].second == ava_seha[k].first) {
 							p = ava_seha[k];
 							break;
@@ -492,7 +495,7 @@ fingers press_fingers(vector<pair<int, int>> fb, fingers fing[5]) {
 				if (j == 2) { //薬指でセーハを用いる
 					bool it = find(ava_seha, tfb[i].second);
 					if (it == true) { //セーハができるかを判断
-						for (int k = 0; k <= ava_seha.size(); k++) {
+						for (unsigned int k = 0; k <= ava_seha.size(); k++) {
 							if (tfb[i].second == ava_seha[k].first) {
 								p = ava_seha[k];
 								break;
@@ -645,7 +648,7 @@ double eval_multiple(form before, vector<int> a_cc, form &after) {
 	fingers a_fing[5]; //コードフォーム
 	form a_form; //仮のコードフォームとその難易度
 
-	for (int k = 0; k < list_afb.size(); k++) {
+	for (unsigned int k = 0; k < list_afb.size(); k++) {
 		for (int l = 0; l < 5; l++) { //
 			a_fing[l].clear();        //指の押さえる組をクリア
 		}                             //
@@ -756,10 +759,10 @@ double eval_part(vector<vector<int>> chord_list) {
 	form b_form; //仮のコードフォームとその難易度
 	double w, max = 0;
 	
-	for (int i = 0; i < chord_list.size(); i++) {
+	for (unsigned int i = 0; i < chord_list.size(); i++) {
 		if (i == 0) { //コードリストの最初のコードの処理
 			list_fb = candchord(chord_list[i]);
-			for (int k = 0; k < list_fb.size(); k++) {
+			for (unsigned int k = 0; k < list_fb.size(); k++) {
 				for (int l = 0; l < 5; l++) { //
 					b_fing[l].clear();        //指の押さえる組をクリア
 				}                             //
@@ -825,7 +828,7 @@ double eval_part(vector<vector<int>> chord_list) {
 
 double eval_song(vector<vector<vector<int>>> song) {
 	double max = 0;
-	for (int i = 0; i < song.size(); i++) {
+	for (unsigned int i = 0; i < song.size(); i++) {
 		if (eval_part(song[i]) > max) {
 			max = eval_part(song[i]);
 		}
@@ -835,111 +838,75 @@ double eval_song(vector<vector<vector<int>>> song) {
 	return max;
 }
 
-int main()
-{
-	//country road
-	vector<vector<vector<int>>> song = {
-		{
-			{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{5,12,17,20,24,29} //Em
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{5,12,17,20,24,29} //Em
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{5,12,17,20,24,29} //Em
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{5,12,17,20,24,29} //Em
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{5,12,17,20,24,29} //Em
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{5,12,17,20,24,29} //Em
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{5,12,17,20,24,29} //Em
-			,{15,22,27,31} //D
-			,{8,12,15,20,24,32} //G
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{5,12,17,20,24,29} //Em
-			,{18,22,25,29} //FM7
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{15,22,25,31} //D7
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{5,12,17,20,24,29} //Em
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{5,12,17,20,24,29} //Em
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{13,17,20,25,29} //C
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{8,12,15,20,24,32} //G
-			,{15,22,27,31} //D
-			,{8,12,15,20,24,32} //G
-	}
-	};
+// 文字列を文字 delimiter で区切って文字列の配列 vector<string> にして
+// 返す関数．コンマやタブ区切り形式のテキスト一行を処理するのに使用する．
+vector<string> split(const string & input, char delim) {
+    std::istringstream stream(input);
+    string field;
+    vector<string> result;
+    while (std::getline(stream, field, delim)) {
+        result.push_back(field);
+    }
+    return result;
+}
 
-/*vector<vector<int>> chord_list = {
-		{8,12,15,20,24,32} //G
-		,{7,17,22,25} //F#m7-5
-};*/
-	//{18,22,25,29} //FM7
-	//{13,17,20,25,29} //C
-	//{13,17,20,24,29} //CM7
-	//{13,17,23,25,29} //C7
-	//{13,20,25,29,34} //C6
-	//{15,22,27,31} //D
-	//{15,22,25,31} //D7
-	//{5,12,17,21,24,29} //E
-	//{5,12,17,20,24,29} //Em
-	//{5,12,15,21,24,29} //E7
-	//{6,13,18,22,25,30} //F
-	//{6,13,18,21,25,30} //Fm
-	//{7,17,22,25,} //F#m7-5
-	//{8,12,15,20,24,32} //G
-	//{10,17,22,26,29} //A
-	//{17,23,26,32} //A#dim
-	//{10,17,22,25,29} //Am
-	//{10,17,20,25,29} //Am7
-	//{11,18,23,28} //A#sus4(4音)
-	//{11,18,23,27,30} //A#(5音)
-	//{12,19,24,28,31} //B
-	//{12,16,22,24,31} //B7
-	//{ 15,22,28,31 } //D?
-	//{13,16,23,27} //Cm7(9)
+int main(int argc, char * argv[]) {
+	string filename;
+	if ( !(argc > 1) ) {
+		cerr << "Chord file name is requested." << endl;
+		return EXIT_FAILURE;
+	} else {
+		filename = string(argv[1]);
+	}
+
+	ifstream chordfile(filename, std::ios::in);
+	if ( !chordfile ) {
+		cerr << "オープン失敗" << endl;
+		return EXIT_FAILURE;
+	}
+
+	vector<vector<vector<int>>> song;
 	
+    string line;
+    while (getline(chordfile, line)) {
+    	if (line.size() == 0)
+    		continue;
+        vector<string> strvec = split(line, '#');
+        if (strvec.size() > 1 and strvec[1].starts_with("part")) {
+        	song.push_back(vector<vector<int>>());
+        }
+        if (strvec[0].size() == 0)
+        	continue;
+        if (song.size() == 0)
+        	song.push_back(vector<vector<int>>());
+        auto & part = song.back();
+        strvec = split(strvec[0], ',');
+        if (strvec.size() == 0)
+        	continue;
+        part.push_back(vector<int>());
+        for(const auto & tmp : strvec) {
+        	int n = stoi(tmp);
+        	part.back().push_back(n);
+        }
+    }
+    chordfile.close();
+
+    cout << "reading file finished." << endl << flush;
+
+	cout << "part " << endl;
+	for(const auto & part : song) {
+		for(const auto & chord : part) {
+			auto note_itr  = chord.begin();
+			cout << *note_itr;
+			if ( chord.size() > 1) {
+				for( ; note_itr != chord.end(); ++note_itr) {
+					cout << ", " << *note_itr;
+				}
+			}
+			cout << endl;
+		}
+		cout << endl;
+	}
+
 	eval_song(song);
 }
