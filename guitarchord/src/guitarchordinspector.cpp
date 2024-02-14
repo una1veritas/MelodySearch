@@ -853,7 +853,7 @@ vector<string> split(const string & input, char delim) {
 int main(int argc, char * argv[]) {
 	string filename;
 	if ( !(argc > 1) ) {
-		cerr << "Chord file name is requested." << endl;
+		cerr << "ファイル名が必要." << endl;
 		return EXIT_FAILURE;
 	} else {
 		filename = string(argv[1]);
