@@ -7,8 +7,8 @@
  *      Ver. 20221017.02
  */
 
-#ifndef SMF_H_
-#define SMF_H_
+#ifndef SMF_H___
+#define SMF_H___
 
 #include <iostream>
 #include <iomanip>
@@ -338,4 +338,4 @@ public:
 
 }
 
-#endif /* SMF_H_ */
+#endif /* SMF_H___ */

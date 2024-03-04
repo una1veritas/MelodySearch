@@ -15,64 +15,8 @@
 #include <cinttypes>
 #include <vector>
 
-namespace smf {
 
-uint32_t get_uint32BE(std::istreambuf_iterator<char> & itr);
-uint32_t get_uint16BE(std::istreambuf_iterator<char> & itr);
-uint32_t get_uint32VLQ(std::istreambuf_iterator<char> & itr);
-bool check_str(const std::string & str, std::istreambuf_iterator<char> & itr);
-
-int octave(uint8_t notenum);
-const char * notename(uint8_t notenum);
-
-constexpr uint32_t INT_MTrk = 0x4d54726b;
-constexpr uint32_t INT_MThd = 0x4d546864;
-constexpr uint32_t INT_XFIH = 0x58464948;
-constexpr uint32_t INT_XFKM = 0x58464b4d;
-constexpr uint32_t INT_Cont = 0x436f6e74;
-
-enum EVENT_TYPE {
-	MIDI_NOTEOFF = 0x80,
-	MIDI_NOTEON = 0x90,
-	MIDI_POLYKEYPRESSURE = 0xa0,
-	MIDI_CONTROLCHANGE = 0xb0,
-	MIDI_PROGRAMCHANGE = 0xc0,
-	MIDI_CHPRESSURE = 0xd0,
-	MIDI_PITCHBEND = 0xe0,
-	SYSTEM = 0xf0,
-	SYS_EX = 0xf0, 	// System Exclusive
-	SYS_SONGPOS = 0xf2,
-	SYS_SONGSEL= 0xf3,
-	SYS_TUNEREQ = 0xf6,
-	SYS_ENDOFEX = 0xf7,
-	SYS_TIMING_CLOCK = 0xf8,
-	SYS_TIMING_START = 0xfa,
-	SYS_TIMING_CONT = 0xfb,
-	SYS_TIMIMG_STOP = 0xfc,
-	SYS_ACTIVE_SENSING = 0xfe,
-	SYS_RESET = 0xff,
-	ESCSYSEX = 0xf7, 	// Escaped System Exclusive
-	META = 0xff, 	// Meta
-};
-
-
-static constexpr char * namesofnote[] = {
-		(char *) "C",
-		(char *) "C#",
-		(char *) "D",
-		(char *) "D#",
-		(char *) "E",
-		(char *) "F",
-		(char *) "F#",
-		(char *) "G",
-		(char *) "G#",
-		(char *) "A",
-		(char *) "A#",
-		(char *) "B",
-		(char *) "",
-};
-
-struct event {
+struct MIDIEvent {
 	uint32_t delta;
 	uint8_t  status;
 	std::string data;
@@ -82,15 +26,17 @@ struct event {
 		return (notenum / 12) - 1;
 	}
 
-	static const char * notename(uint8_t notenum) {
-		return smf::namesofnote[notenum % 12];
+	static const char * notename(uint8_t notenum);
+
+	static const bool check_isStatusByte(uint8_t b) {
+		return (b & 0x80) != 0 ;
 	}
 
-	event(void) : delta(0), status(0), data() {}
+	MIDIEvent(void) : delta(0), status(0), data() {}
 
-	event(std::istreambuf_iterator<char> & itr, uint8_t laststatus);
+//	event(std::istreambuf_iterator<char> & itr, uint8_t laststatus);
 
-	void read(std::istreambuf_iterator<char> & itr, uint8_t laststatus = 0);
+	void read_databytes(std::istreambuf_iterator<char> & itr);
 
 	void clear() {
 		delta = 0;
@@ -98,13 +44,11 @@ struct event {
 		data.clear();
 	}
 
-	~event() {
+	~MIDIEvent() {
 		data.clear();
 	}
 
-	bool isMeta(void) const {
-		return status == META;
-	}
+	bool isMeta(void) const;
 
 	bool isEoT(void) const {
 		return isMeta() && data[0] == 0x2f;
@@ -131,6 +75,16 @@ struct event {
 		return (msb4 >= 8) and (msb4 <= 14);
 	}
 
+	bool isSystem() const {
+		return (0xf0 <= status) && (status <= 0xf7);
+	}
+
+	bool isRealTime() const {
+		return (0xf8 <= status) && (status <= 0xff);
+	}
+
+	bool isProgChange() const;
+
 	bool isNote() const {
 		if ( (status & 0xe0) == 0x80 ) {
 			return true;
@@ -138,24 +92,22 @@ struct event {
 		return false;
 	}
 
-	bool isNoteOn() const {
-		if ( (status & 0xf0) == smf::MIDI_NOTEON ) {
-			return data[1] > 0;
-		}
-		return false;
-	}
-
-	bool isNoteOff() const {
-		return (status & 0xf0) == smf::MIDI_NOTEOFF;
-	}
+	bool isNoteOn() const;
+	bool isNoteOff() const;
 
 	int channel(void) const {
 		return 0x0f & status;
 	}
 
+	int velocity() const {
+		if ( isNote() )
+			return data[1];
+		return -2;
+	}
+
 	int octave() const {
 		if ( isNote() )
-			return smf::event::octave(data[0]);
+			return MIDIEvent::octave(data[0]);
 		return -2;
 	}
 
@@ -163,15 +115,17 @@ struct event {
 		return delta;
 	}
 
-	const char * notename() const {
-		if ( !isNote() )
-			return namesofnote[12];
-		return smf::event::notename(data[0]);
-	}
+	const char * notename() const;
 
 	int notenumber() const {
 		if ( !isNote() )
 			return 128;
+		return int(data[0]);
+	}
+
+	int prognumber() const {
+		if ( !isProgChange() )
+			return 0;
 		return int(data[0]);
 	}
 
@@ -184,83 +138,118 @@ struct event {
 		return out;
 	}
 
-	friend std::ostream & operator<<(std::ostream & out, const event & evt) {
+	friend std::ostream & operator<<(std::ostream & out, const MIDIEvent & evt) {
 		return evt.printOn(out);
 	}
 
 };
 
 
-struct note {
+struct MIDINote {
 	uint32_t time;
 	uint8_t channel;
 	uint8_t number;
 	uint32_t duration;
 
-	note(uint32_t t, const smf::event & e, uint32_t d = 0) : time(t), channel(e.channel()), number(e.notenumber()), duration(d) { }
+	MIDINote(uint32_t t, const MIDIEvent & e, uint32_t d = 0) : time(t), channel(e.channel()), number(e.notenumber()), duration(d) { }
 
-	friend std::ostream & operator<<(std::ostream & out, const note & n) {
+	bool operator==(const MIDINote & rgt) const {
+		return (time == rgt.time) && (channel == rgt.channel)
+				&& (number == rgt.number) && (duration == rgt.duration);
+	}
+
+	bool operator<(const MIDINote & rgt) const {
+		if (time < rgt.time) {
+			return true;
+		} else if (time > rgt.time)
+			return false;
+		if (channel < rgt.channel) {
+			return true;
+		} else if (channel > rgt.channel)
+			return false;
+		if (number < rgt.number) {
+			return true;
+		} else if (number > rgt.number)
+			return false;
+		if (duration < rgt.duration) {
+			return true;
+		}
+		return false;
+	}
+
+	friend std::ostream & operator<<(std::ostream & out, const MIDINote & n) {
 		out << "[";
 		out << std::dec << n.time << ", " << int(n.channel) << ".";
-		out << smf::event::notename(n.number) << smf::event::octave(n.number) << ", " << n.duration;
+		out << MIDIEvent::notename(n.number) << MIDIEvent::octave(n.number) << ", " << n.duration;
 		out << "]";
 		return out;
 	}
 };
 
+
 class MIDI {
-	uint16_t _format, ntracks, _division;
-	std::vector<std::vector<smf::event>> _tracks;
+private:
+	uint16_t _format, _division;
+	std::vector<std::vector<MIDIEvent>> _tracks;
 
 public:
-	MIDI() :  _format(0), ntracks(0), _division(0), _tracks() {}
+	static uint32_t get_uint32BE(std::istreambuf_iterator<char> & itr);
+	static uint32_t get_uint16BE(std::istreambuf_iterator<char> & itr);
+	static uint32_t get_uint32VLQ(std::istreambuf_iterator<char> & itr);
+	static bool check_str(const std::string & str, std::istreambuf_iterator<char> & itr);
+
+	static int octave(uint8_t notenum);
+	static const char * notename(uint8_t notenum);
+
+	static constexpr uint32_t INT_MTrk = 0x4d54726b;
+	static constexpr uint32_t INT_MThd = 0x4d546864;
+	static constexpr uint32_t INT_XFIH = 0x58464948;
+	static constexpr uint32_t INT_XFKM = 0x58464b4d;
+	static constexpr uint32_t INT_Cont = 0x436f6e74;
+
+	enum EVENT_TYPE {
+		MIDI_NOTEOFF = 0x80,
+		MIDI_NOTEON = 0x90,
+		MIDI_POLYKEYPRESSURE = 0xa0,
+		MIDI_CONTROLCHANGE = 0xb0,
+		MIDI_PROGRAMCHANGE = 0xc0,
+		MIDI_CHPRESSURE = 0xd0,
+		MIDI_PITCHBEND = 0xe0,
+		SYSTEM = 0xf0,
+		SYS_EX = 0xf0, 	// System Exclusive
+		SYS_SONGPOS = 0xf2,
+		SYS_SONGSEL = 0xf3,
+		SYS_TUNEREQ = 0xf6,
+		SYS_ENDOFEX = 0xf7,
+		SYS_TIMING_CLOCK = 0xf8,
+		SYS_TIMING_START = 0xfa,
+		SYS_TIMING_CONT = 0xfb,
+		SYS_TIMIMG_STOP = 0xfc,
+		SYS_ACTIVE_SENSING = 0xfe,
+		SYS_RESET = 0xff,
+		ESCSYSEX = 0xf7, 	// Escaped System Exclusive
+		META = 0xff, 	// Meta
+	};
+
+
+	static constexpr char *namesofnote[] = { (char*) "C", (char*) "C#",
+			(char*) "D", (char*) "D#", (char*) "E", (char*) "F", (char*) "F#",
+			(char*) "G", (char*) "G#", (char*) "A", (char*) "A#", (char*) "B",
+			(char*) "", };
+
+	MIDI() :  _format(0), _division(0), _tracks() {}
 	MIDI(std::istream & smffile);
-	/*
-	score(std::istream & smffile) {
-		std::istreambuf_iterator<char> itr(smffile);
-		std::istreambuf_iterator<char> end_itr;
-
-		if ( check_str("MThd", itr) ) {
-			get_uint32BE(itr);
-			// The header length is always 6.
-			smfformat = get_uint16BE(itr);
-			ntracks = get_uint16BE(itr);
-			division = get_uint16BE(itr);
-		} else {
-			smfformat = 0;
-			ntracks = 0;
-			division = 0;
-			tracks.clear();
-			return;
-		}
-		while (itr != end_itr) {
-			if ( check_str("MTrk", itr) ) {
-				get_uint32BE(itr);
-				//std::cout << "track" << std::endl;
-				tracks.push_back(std::vector<event>());
-				uint8_t laststatus = 0;
-				do {
-					event ev(itr, laststatus);
-					//std::cout << ev << std::endl;
-					laststatus = ev.status;
-					tracks.back().push_back(ev);
-				} while ( !tracks.back().back().isEoT() );
-
-			}
-		}
-	}
-	*/
 
 	void clear() {
 		for(unsigned int i = 0; i < _tracks.size(); ++i) {
 			_tracks[i].clear();
 		}
 		_tracks.clear();
-		_format = 0, ntracks = 0, _division = 0;
+		_format = 0, _division = 0;
 	}
 
 	bool is_empty(void) const {
-		return  ntracks == 0;
+		return _tracks.empty();
 	}
 
 	uint16_t format() const {
@@ -281,35 +270,39 @@ public:
 		}
 	}
 
-	uint16_t noftracks() const {
-		return ntracks;
+	const std::vector<std::vector<MIDIEvent>> & tracks() const {
+		return _tracks;
 	}
 
-	const std::vector<smf::event> & track(int i) const {
+	const std::vector<MIDIEvent> & track(int i) const {
 		return _tracks[i];
 	}
 
-	std::vector<smf::note> score() const;
+	std::vector<MIDINote> score() const;
+	std::vector<MIDINote> score(const std::vector<int> & channels, const std::vector<int> & progs) const;
 
 	std::ostream & header_info(std::ostream & out) const;
 
 	friend std::ostream & operator<<(std::ostream & out, const MIDI & midi) {
 		out << "smf";
-		out << "(header: format = " << std::dec << midi.format() << ", ntracks = " << midi.noftracks() << ", resolution = " << midi.resolution() << ") ";
-		/*
-		for(uint16_t i = 0; i < midi.noftracks() ; ++i) {
-			out << std::endl << "track " << std::dec << i << ": ";
-			for(auto e = midi.tracks[i].cbegin(); e != midi.tracks[i].end() ; ++e) {
-				out << *e;
-			}
+		out << "(header: format = " << std::dec << midi.format() << ", the number of tracks = " << midi.tracks().size() << ", resolution = " << midi.resolution() << ") ";
+		if ( midi._tracks.size() > 0 ) {
+			out << std::endl << "track size: ";
+			out << midi.track(0).size();
+			for(uint16_t i = 1; i < midi.tracks().size() ; ++i) {
+				out << ", ";
+				out << midi.track(i).size();
+				/*
+				for(auto e = midi._tracks[i].cbegin(); e != midi._tracks[i].end() ; ++e) {
+					out << *e;
+				}
+				*/
 
+			}
 		}
-		*/
 		out << std::endl;
 		return out;
 	}
 };
-
-}
 
 #endif /* SMF_H_ */

@@ -10,11 +10,44 @@
 #include <iostream>
 #include <iomanip>
 #include <deque>
-
+#include <vector>
+#include <algorithm>
 #include "smf.h"
 
+const char * MIDIEvent::notename(uint8_t notenum) {
+	return MIDI::namesofnote[notenum % 12];
+}
+
+bool MIDIEvent::isMeta(void) const {
+	return status == MIDI::META;
+}
+
+bool MIDIEvent::isProgChange() const {
+	if ( (status & 0xf0) == MIDI::MIDI_PROGRAMCHANGE) {
+		return true;
+	}
+	return false;
+}
+
+bool MIDIEvent::isNoteOn() const {
+	if ( (status & 0xf0) == MIDI::MIDI_NOTEON ) {
+		return true;
+	}
+	return false;
+}
+
+bool MIDIEvent::isNoteOff() const {
+	return (status & 0xf0) == MIDI::MIDI_NOTEOFF;
+}
+
+const char * MIDIEvent::notename() const {
+	if ( !isNote() )
+		return MIDI::namesofnote[12];
+	return MIDIEvent::notename(data[0]);
+}
+
 // read 4 bytes to get a 32 bit value in the big endian byte order
-uint32_t smf::get_uint32BE(std::istreambuf_iterator<char> & itr) {
+uint32_t MIDI::get_uint32BE(std::istreambuf_iterator<char> & itr) {
 	uint32_t res = 0;
 	for(uint16_t i = 0; i < 4; ++i) {
 		res <<= 8;
@@ -25,7 +58,7 @@ uint32_t smf::get_uint32BE(std::istreambuf_iterator<char> & itr) {
 }
 
 // read 2 bytes to get a 16 bit value in the big endian byte order
-uint32_t smf::get_uint16BE(std::istreambuf_iterator<char> & itr) {
+uint32_t MIDI::get_uint16BE(std::istreambuf_iterator<char> & itr) {
 	uint32_t res = *itr;
 	++itr;
 	res <<= 8;
@@ -34,7 +67,7 @@ uint32_t smf::get_uint16BE(std::istreambuf_iterator<char> & itr) {
 	return res;
 }
 
-uint32_t smf::get_uint32VLQ(std::istreambuf_iterator<char> & itr) {
+uint32_t MIDI::get_uint32VLQ(std::istreambuf_iterator<char> & itr) {
 	uint8_t b;
 	uint32_t res = 0;
 	for( ; ; ) {
@@ -48,7 +81,7 @@ uint32_t smf::get_uint32VLQ(std::istreambuf_iterator<char> & itr) {
 	return res;
 }
 
-bool smf::check_str(const std::string & str, std::istreambuf_iterator<char> & itr) {
+bool MIDI::check_str(const std::string & str, std::istreambuf_iterator<char> & itr) {
 		bool res = true;
 		std::cerr << "check_str: ";
 		for(auto i = str.begin(); i != str.end(); ++i, ++itr) {
@@ -60,7 +93,7 @@ bool smf::check_str(const std::string & str, std::istreambuf_iterator<char> & it
 //	return std::equal(str.begin(), str.end(), itr);
 }
 
-
+/*
 smf::event::event(std::istreambuf_iterator<char> & itr, uint8_t laststatus) {
 	delta = get_uint32VLQ(itr);
 	status = laststatus;
@@ -104,51 +137,39 @@ smf::event::event(std::istreambuf_iterator<char> & itr, uint8_t laststatus) {
 		// error.
 	}
 }
+*/
 
-
-void smf::event::read(std::istreambuf_iterator<char> & itr, uint8_t laststatus) {
+void MIDIEvent::read_databytes(std::istreambuf_iterator<char> & itr) {
 	std::istreambuf_iterator<char> end_itr;
-	delta = get_uint32VLQ(itr);
-	status = laststatus;
-	bool not_running_status = false;
-	if (((*itr) & 0x80) != 0) {
-		not_running_status = true;
-		status = *itr;
-		++itr;
-	} /*
-	else {
-		std::cout << "running status" << std::endl;
-	}
-	*/
 	uint32_t len;
 	uint8_t type = status & 0xf0;
-	if ( (smf::MIDI_NOTEOFF <= type && type <= smf::MIDI_CONTROLCHANGE) || (type == smf::MIDI_PITCHBEND) ) {
+	if ( (MIDI::MIDI_NOTEOFF <= type && type <= MIDI::MIDI_CONTROLCHANGE) || (type == MIDI::MIDI_PITCHBEND) ) {
 		data.push_back(*itr);
 		++itr;
 		data.push_back(*itr);
 		++itr;
-	} else if ( type == smf::MIDI_PROGRAMCHANGE || type == smf::MIDI_CHPRESSURE ) {
+	} else if ( type == MIDI::MIDI_PROGRAMCHANGE || type == MIDI::MIDI_CHPRESSURE ) {
 		data.push_back(*itr);
 		++itr;
-	} else if ( type == smf::SYSTEM ) {
-		if ( status == smf::SYS_EX ) {
-			len = get_uint32VLQ(itr);
+	} else if ( type == MIDI::SYSTEM ) {
+		if ( status == MIDI::SYS_EX ) {
+			len = MIDI::get_uint32VLQ(itr);
 			for(uint32_t i = 0; i < len; ++i) {
 				data.push_back(*itr);
 				++itr;
 			}
 			//std::cerr << "sys_ex (" << data.size() << ") " << std::endl;
-		}else if ( status == smf::ESCSYSEX ) {
-			len = get_uint32VLQ(itr);
+		}else if ( status == MIDI::ESCSYSEX ) {
+			len = MIDI::get_uint32VLQ(itr);
 			for(uint32_t i = 0; i < len; ++i) {
 				data.push_back(*itr);
 				++itr;
 			}
 			//std::cerr << "escsysex (" << data.size() << ") " << std::endl;
-		} else if ( status == smf::META ) {
+		} else if ( status == MIDI::META ) {
 			data.push_back(*itr); // function
 			++itr;
-			len = get_uint32VLQ(itr);
+			len = MIDI::get_uint32VLQ(itr);
 			//if (len == 6208) {
 			//	std::cerr << "caution!" << std::endl;
 			//}
@@ -160,28 +181,23 @@ void smf::event::read(std::istreambuf_iterator<char> & itr, uint8_t laststatus) 
 				}
 			}
 			//std::cerr << "meta (" << data.size() << ") " << std::endl;
-		} else if (status == smf::SYS_SONGPOS ) {
+		} else if (status == MIDI::SYS_SONGPOS ) {
 			data.push_back(*itr);
 			++itr;
 			data.push_back(*itr);
 			++itr;
 			//std::cerr << "system common: song pos pointer " << (((unsigned int)data[1])<<7 | (unsigned int)data[0]) << std::endl;
-		} else if ( status == smf::SYS_SONGSEL ) {
+		} else if ( status == MIDI::SYS_SONGSEL ) {
 			if ( (*itr & 0x80) != 0 ) {
-				std::cerr << "smf::smf::read warning! " << "SYS_SONGSEL song select followed by 8bit number 0x" << std::hex << (((unsigned int) *itr) & 0xff) << std::endl;
+				std::cerr << "MIDIEvent::read_databytes warning! " << "SYS_SONGSEL song select followed by 8bit number 0x" << std::hex << (((unsigned int) *itr) & 0xff) << std::endl;
 			}
 			data.push_back( (*itr) & 0x7f);
 			++itr;
 			//std::cerr << "system common: song select " << std::hex << (unsigned int) (data[0]) << std::endl;
-		} else if ( status == smf::SYS_TUNEREQ ) {
+		} else if ( status == MIDI::SYS_TUNEREQ ) {
 			//std::cerr << "system common: tune request" << std::endl;
 		} else {
-			std::cerr << "smf::event::read unknown system event!";
-			if ( not_running_status ) {
-				std::cerr << " status = " << std::hex << int(status);
-			} else {
-				std::cerr << " running status = " << std::hex << (unsigned int) laststatus;
-			}
+			std::cerr << "MIDIEvent::read unknown system event!";
 			std::cerr << ", type = " << std::hex << int(type) << std::endl;
 			// error.
 		}
@@ -189,44 +205,44 @@ void smf::event::read(std::istreambuf_iterator<char> & itr, uint8_t laststatus) 
 	//std::cout << *this << std::endl;
 }
 
-std::ostream & smf::event::printOn(std::ostream & out) const {
+std::ostream & MIDIEvent::printOn(std::ostream & out) const {
 	uint8_t type = status & 0xf0;
-	if ( (smf::MIDI_NOTEOFF <= type) && (type <= smf::MIDI_PITCHBEND) ) {
+	if ( (MIDI::MIDI_NOTEOFF <= type) && (type <= MIDI::MIDI_PITCHBEND) ) {
 		out << "(";
 		if ( delta > 0 )
 			out << delta << ", ";
 		switch(type) {
-		case smf::MIDI_NOTEOFF:
+		case MIDI::MIDI_NOTEOFF:
 			out << "NOTEOFF:" << channel() << ", "
 			<< notename() << octave(); // << ", " << int(evt.data[1]);
 			break;
-		case smf::MIDI_NOTEON:
+		case MIDI::MIDI_NOTEON:
 			out << "NOTE ON:" << channel() << ", "
 			<< notename() << octave() << ", " << int(data[1]);
 			break;
-		case smf::MIDI_POLYKEYPRESSURE:
+		case MIDI::MIDI_POLYKEYPRESSURE:
 			out << "POLYKEY PRESS, " << channel() << ", "
 			<< std::dec << int(data[0]) << ", " << int(data[1]);
 			break;
-		case smf::MIDI_CONTROLCHANGE:
+		case MIDI::MIDI_CONTROLCHANGE:
 			out << "CTL CHANGE, " << channel() << ", "
 			<< std::dec << int(data[0]) << ", " << int(data[1]);
 			break;
-		case smf::MIDI_PROGRAMCHANGE:
+		case MIDI::MIDI_PROGRAMCHANGE:
 			out << "PRG CHANGE, " << channel() << ", "
 			<< std::dec << int(data[0]);
 			break;
-		case smf::MIDI_CHPRESSURE:
+		case MIDI::MIDI_CHPRESSURE:
 			out << "CHANNEL PRESS, " << channel() << ", "
 			<< std::dec << int(data[0]);
 			break;
-		case smf::MIDI_PITCHBEND:
+		case MIDI::MIDI_PITCHBEND:
 			out << "CHANNEL PRESS, " << channel() << ", "
 			<< std::dec << (uint16_t(data[1])<<7 | data[0]);
 			break;
 		}
 		out << ")";
-	} else if ( status == smf::ESCSYSEX ) {
+	} else if ( status == MIDI::ESCSYSEX ) {
 		out << "(";
 		if ( delta != 0 )
 			out << delta << ", ";
@@ -239,7 +255,7 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 			}
 		}
 		out << ")";
-	} else if ( status == smf::META ) {
+	} else if ( status == MIDI::META ) {
 		out << "(";
 		if ( delta != 0 )
 			out << std::dec << delta << ", ";
@@ -335,7 +351,7 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 			}
 		}
 		out << ")";
-	} else if ( status == smf::SYS_EX ) {
+	} else if ( status == MIDI::SYS_EX ) {
 		out << "(";
 		if ( delta != 0 )
 			out << delta << ", ";
@@ -359,7 +375,7 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 		if (textmode)
 			out << "\"";
 		out << ")";
-	} else if (status == smf::SYS_SONGPOS ) {
+	} else if (status == MIDI::SYS_SONGPOS ) {
 		out << "(";
 		if ( delta != 0 )
 			out << std::dec << delta << ", ";
@@ -367,12 +383,12 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 		val14bit <<= 7;
 		val14bit |= (uint16_t)data[0] & 0x7f;
 		out << "SYS_SONGPOS " << val14bit << ")";
-	} else if ( status == smf::SYS_SONGSEL ) {
+	} else if ( status == MIDI::SYS_SONGSEL ) {
 		out << "(";
 		if ( delta != 0 )
 			out << std::dec << delta << ", ";
 		out << "SYS_SONGSEL "<< (uint16_t) data[0] << ")";
-	} else if ( status == smf::SYS_TUNEREQ ) {
+	} else if ( status == MIDI::SYS_TUNEREQ ) {
 		out << "(";
 		if ( delta != 0 )
 			out << std::dec << delta << ", ";
@@ -383,7 +399,7 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 			out << std::dec << delta << ", ";
 		out << "UNKNOWN MESSAGE: ";
 		// error.
-		std::cerr << "smfevent::operator<< error!";
+		std::cerr << "MIDIEvent::operator<< error!";
 		out << std::hex << (unsigned int) status << " ";
 		for(auto i = data.begin(); i != data.end(); ++i) {
 			if ( isprint(*i) && !isspace(*i) ) {
@@ -398,10 +414,10 @@ std::ostream & smf::event::printOn(std::ostream & out) const {
 	return out;
 }
 
-smf::score::score(std::istream & smffile) {
+MIDI::MIDI(std::istream & smffile) {
 	std::istreambuf_iterator<char> itr(smffile);
 	std::istreambuf_iterator<char> end_itr;
-
+	uint32_t ntracks;
 	uint32_t tracksig;
 	tracksig = get_uint32BE(itr);
 	if ( tracksig == INT_MThd ) {
@@ -422,19 +438,34 @@ smf::score::score(std::istream & smffile) {
 		uint32_t tracksig = get_uint32BE(itr);
 		if ( tracksig == INT_MTrk ) {
 			//uint32_t len =
-			get_uint32BE(itr);  // skip the track length
+			get_uint32BE(itr);  // read to skip the track length
 			//std::cerr << len << std::endl;
-			_tracks.push_back(std::vector<event>());
-			uint8_t laststatus = 0;
-			event ev;
+			_tracks.push_back(std::vector<MIDIEvent>());
+			uint8_t status_buffer = 0;
+			MIDIEvent ev;
 			//long counter = 0;
 			do {
+				// clear status byte and data bytes
 				ev.clear();
-				ev.read(itr, laststatus);
-				//std::cout << "laststatus = " << std::hex << (int) laststatus << " " << ev << std::endl;
-				if ( ev.isMIDI() ) {
-					laststatus = ev.status;
+				// read delta
+				ev.delta = get_uint32VLQ(itr);
+				// check status byte or data byte
+				ev.status = *itr;
+				// set buffer 'status' if status byte
+				if ( MIDIEvent::check_isStatusByte(ev.status) ) {
+					++itr; // advance to the head of data bytes
+					if ( ev.isMIDI() ) {
+						status_buffer = ev.status;
+					} else if ( ev.isSystem() ) {
+						status_buffer = 0;
+					} // else ev is Real Time event, do nothing
+				} else {
+					// in running status
+					ev.status = status_buffer;
 				}
+				// read data byte(s)
+				ev.read_databytes(itr);
+				//std::cout << "laststatus = " << std::hex << (int) laststatus << " " << ev << std::endl;
 				_tracks.back().push_back(ev);
 			} while ( !ev.isEoT() and itr != end_itr /* tracks.back().back().isEoT() */ );
 
@@ -468,106 +499,94 @@ smf::score::score(std::istream & smffile) {
 	return;
 }
 
-std::ostream & smf::score::header_info(std::ostream & out) const {
+std::ostream & smf::MIDI::header_info(std::ostream & out) const {
 	out << "Format = " << std::dec << _format;
-	out << ", num. of Tracks = " << ntracks;
+	out << ", num. of Tracks = " << _tracks.size();
 	out << ", division = " << _division;
 	return out;
 }
 
-std::vector<smf::note> smf::score::notes() const {
+// smf::score の tracks に含まれるトラックをスキャンし，
+// note-on と note-off イベントの組を音符 smf::note として開始時刻，音程，長さの組
+// に解釈し，smf::note の開始時刻順の列として返す．
+std::vector<smf::note> smf::MIDI::score() const {
+	const std::vector<int> chs = std::vector<int>() ;
+	const std::vector<int> prgs = std::vector<int>();
+	return smf::MIDI::score(chs, prgs);
+}
+
+std::vector<smf::note> smf::MIDI::score(const std::vector<int> & channels, const std::vector<int> & progs) const {
 	std::vector<smf::note> noteseq;
-
-	struct trkinfo {
-		std::vector<smf::event>::const_iterator cursor;
-		uint32_t to_go;
-	} trk[noftracks()];
-	for(int i = 0; i < noftracks(); ++i) {
-		trk[i].cursor = _tracks[i].cbegin();
+	struct track_info {
+		std::vector<smf::event>::const_iterator iter; // iterator
+		uint64_t elapsed;    // time elapsed from the start to just before delta time of *iter
+	} track[tracks().size()];
+	for(uint32_t i = 0; i < tracks().size(); ++i) {
+		track[i] = { _tracks[i].cbegin(), 0 };
 	}
-	struct {
-		struct {
-			bool noteon;
+
+	struct sound {
+		struct onoff {
+			bool on;
 			uint64_t index;
-		} key[128];
-	} emu[16];
-	for(int ch = 0; ch < 18; ++ch){
-		for(int n = 0; n < 128; ++n) {
-			emu[ch].key[n].noteon = false;
-		}
-	}
 
-	uint64_t globaltime = 0;
-	// process zero global time events
-	for(uint32_t i = 0; i < noftracks(); ++i) {
-		trk[i].to_go = 0;
-		while ( trk[i].cursor->deltaTime() == 0 && ! trk[i].cursor->isEoT() ) {
-			// evaluate events
-			const smf::event & evt = *trk[i].cursor;
-			//std::cout << i << ": " << evt << " ";
-			if ( evt.isNoteOn() ) {
-				noteseq.push_back(note(globaltime, evt));
-				emu[evt.channel()].key[evt.notenumber()].noteon = true;
-				emu[evt.channel()].key[evt.notenumber()].index = noteseq.size() - 1;
-			} else if ( evt.isNoteOff() ) {
-				if ( emu[evt.channel()].key[evt.notenumber()].noteon ) {
-					const uint64_t & idx = emu[evt.channel()].key[evt.notenumber()].index;
-					std::cout << (globaltime - noteseq[idx].time) << " ";
-					noteseq[idx].duration = globaltime - noteseq[idx].time;
-					emu[evt.channel()].key[evt.notenumber()].noteon = false;
-				}
-			}
-			++trk[i].cursor;
-		}
-		//std::cout << std::endl;
-		if ( trk[i].cursor->isEoT() )
-			continue;
-		trk[i].to_go = trk[i].cursor->deltaTime();
-	}
+			onoff() : on(false), index(0) {}
+		} note[128];
+	} midi[16];
 
-	uint64_t min_to_go;
+	int program[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, };
+
+	uint64_t globaltime = 0, nextglobal[tracks().size()];
+	//int cnt = 0;
 	while (true) {
-		min_to_go = 0;
-		for(uint32_t i = 0; i < noftracks(); ++i) {
-			if ( trk[i].cursor->isEoT() )
-				continue;
-			if ( min_to_go == 0 or trk[i].to_go < min_to_go ) {
-				min_to_go = trk[i].to_go;
-			}
-		}
-		//std::cout << "min_to_go = " << min_to_go << std::endl;
-		globaltime += min_to_go;
-		//std::cout << "global = " << globaltime << std::endl;
-		if (min_to_go == 0)
-			break;
-		for(uint32_t i = 0; i < noftracks(); ++i) {
-			if ( trk[i].cursor->isEoT() )
-				continue;
-			trk[i].to_go -= min_to_go;
-
-			if ( trk[i].to_go == 0 ) {
-				do {
-					const smf::event & evt = *trk[i].cursor;
-					// events occur
-
-					if ( evt.isNoteOn() ) {
-						noteseq.push_back(note(globaltime, evt));
-						emu[evt.channel()].key[evt.notenumber()].noteon = true;
-						emu[evt.channel()].key[evt.notenumber()].index = noteseq.size() - 1;
-					} else if ( evt.isNoteOff() ) {
-						if ( emu[evt.channel()].key[evt.notenumber()].noteon ) {
-							const uint64_t & idx = emu[evt.channel()].key[evt.notenumber()].index;
+		for(uint32_t i = 0; i < tracks().size(); ++i) {
+			nextglobal[i] = 0;
+			while ( (! track[i].iter->isEoT())
+					&& (track[i].elapsed + track[i].iter->deltaTime() <= globaltime) ) {
+				const smf::event & evt = *(track[i].iter);
+				const int evt_chan = evt.channel();
+				//const int evt_prog = program[evt_chan];
+				//std::cout << i << " " <<track[i].elapsed + track[i].iter->deltaTime() << " " << evt << std::endl;
+				if ( evt.isNote() ) {
+					//const int chs = std::count(channels.begin(), channels.end(), evt_chan);
+					const bool is_target_channel = channels.empty() || (std::count(channels.begin(), channels.end(), evt_chan) > 0);
+					const bool is_target_prog = progs.empty() || (std::count(progs.begin(), progs.end(), program[evt_chan]) > 0);
+					if ( evt.isNoteOn() && evt.velocity() > 0 ) {
+						midi[evt.channel()].note[evt.notenumber()].on = true;
+						if ( is_target_channel && is_target_prog ) {
+							noteseq.push_back(note(globaltime, evt));
+							midi[evt.channel()].note[evt.notenumber()].index = noteseq.size() - 1;
+						}
+					} else {
+						midi[evt.channel()].note[evt.notenumber()].on = false;
+						if ( is_target_channel && is_target_prog ) {
+							const int & idx = midi[evt.channel()].note[evt.notenumber()].index;
 							noteseq[idx].duration = globaltime - noteseq[idx].time;
-							emu[evt.channel()].key[evt.notenumber()].noteon = false;
 						}
 					}
-					++trk[i].cursor;
-				} while ( trk[i].cursor->deltaTime() == 0 && ! trk[i].cursor->isEoT() );
-				//std::cout << std::endl;
-				trk[i].to_go = trk[i].cursor->deltaTime();
+				} else if (evt.isProgChange() ) {
+					program[evt_chan] = evt.prognumber();
+					std::cout << globaltime << " " << evt_chan << " " << program[evt_chan] << std::endl;
+				}
+				// go iterator forward
+				track[i].elapsed += track[i].iter->deltaTime();
+				//std::cout << track[i].elapsed << "; ";
+				++track[i].iter;
+				nextglobal[i] = globaltime + track[i].iter->deltaTime();
 			}
-
+			if ( track[i].iter->isEoT() )
+				continue;
 		}
+		uint64_t next = UINT64_MAX;
+		for(unsigned int i = 0; i < tracks().size(); ++i) {
+			if ( nextglobal[i] != 0 ) {
+				next = nextglobal[i] < next ? nextglobal[i] : next ;
+			}
+		}
+		//std::cout << "next " << next << std::endl;
+		if ( next == UINT64_MAX )
+			break;
+		globaltime = next;
 	}
 
 	return noteseq;
