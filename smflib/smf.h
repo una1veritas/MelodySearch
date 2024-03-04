@@ -278,6 +278,8 @@ public:
 		return _tracks[i];
 	}
 
+	std::vector<MIDIEvent> eventqueue() const;
+
 	std::vector<MIDINote> score() const;
 	std::vector<MIDINote> score(const std::vector<int> & channels, const std::vector<int> & progs) const;
 

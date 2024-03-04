@@ -499,26 +499,36 @@ MIDI::MIDI(std::istream & smffile) {
 	return;
 }
 
-std::ostream & smf::MIDI::header_info(std::ostream & out) const {
+std::ostream & MIDI::header_info(std::ostream & out) const {
 	out << "Format = " << std::dec << _format;
 	out << ", num. of Tracks = " << _tracks.size();
 	out << ", division = " << _division;
 	return out;
 }
 
-// smf::score の tracks に含まれるトラックをスキャンし，
-// note-on と note-off イベントの組を音符 smf::note として開始時刻，音程，長さの組
-// に解釈し，smf::note の開始時刻順の列として返す．
-std::vector<smf::note> smf::MIDI::score() const {
-	const std::vector<int> chs = std::vector<int>() ;
-	const std::vector<int> prgs = std::vector<int>();
-	return smf::MIDI::score(chs, prgs);
+std::vector<MIDIEvent> MIDI::eventqueue() const {
+	std::vector<MIDIEvent> evtq;
+	for(uint32_t i = 0; i < tracks().size(); ++i) {
+		for(const auto & evt : track(i)) {
+			evtq.push_back(evt);
+		}
+	}
+	return evtq;
 }
 
-std::vector<smf::note> smf::MIDI::score(const std::vector<int> & channels, const std::vector<int> & progs) const {
-	std::vector<smf::note> noteseq;
+// MIDI の tracks に含まれるトラックをスキャンし，
+// note-on と note-off イベントの組を音符 MIDINote として開始時刻，音程，長さの組
+// に解釈し，MIDINote の開始時刻順の列として返す．
+std::vector<MIDINote> MIDI::score() const {
+	const std::vector<int> chs = std::vector<int>() ;
+	const std::vector<int> prgs = std::vector<int>();
+	return MIDI::score(chs, prgs);
+}
+
+std::vector<MIDINote> MIDI::score(const std::vector<int> & channels, const std::vector<int> & progs) const {
+	std::vector<MIDINote> noteseq;
 	struct track_info {
-		std::vector<smf::event>::const_iterator iter; // iterator
+		std::vector<MIDIEvent>::const_iterator iter; // iterator
 		uint64_t elapsed;    // time elapsed from the start to just before delta time of *iter
 	} track[tracks().size()];
 	for(uint32_t i = 0; i < tracks().size(); ++i) {
@@ -543,7 +553,7 @@ std::vector<smf::note> smf::MIDI::score(const std::vector<int> & channels, const
 			nextglobal[i] = 0;
 			while ( (! track[i].iter->isEoT())
 					&& (track[i].elapsed + track[i].iter->deltaTime() <= globaltime) ) {
-				const smf::event & evt = *(track[i].iter);
+				const MIDIEvent & evt = *(track[i].iter);
 				const int evt_chan = evt.channel();
 				//const int evt_prog = program[evt_chan];
 				//std::cout << i << " " <<track[i].elapsed + track[i].iter->deltaTime() << " " << evt << std::endl;
@@ -554,7 +564,7 @@ std::vector<smf::note> smf::MIDI::score(const std::vector<int> & channels, const
 					if ( evt.isNoteOn() && evt.velocity() > 0 ) {
 						midi[evt.channel()].note[evt.notenumber()].on = true;
 						if ( is_target_channel && is_target_prog ) {
-							noteseq.push_back(note(globaltime, evt));
+							noteseq.push_back(MIDINote(globaltime, evt));
 							midi[evt.channel()].note[evt.notenumber()].index = noteseq.size() - 1;
 						}
 					} else {
