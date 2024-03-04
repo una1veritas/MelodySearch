@@ -7,8 +7,13 @@ using namespace std;
 char PATH[] = "./res/reference.mid";
 
 
-int main() {
-	Midi f {PATH};
+int main(int argc, char * argv[]) {
+	if (argc <= 1) {
+		cout << "Specify smf file name." << endl;
+		exit(1);
+	}
+
+	Midi f {argv[1]};
 
 	auto& header = f.getHeader();
 	auto& tracks = f.getTracks();

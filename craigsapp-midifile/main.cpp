@@ -3,14 +3,14 @@
 
 
 int main() {
-    // MIDIƒtƒ@ƒCƒ‹‚ðƒp[ƒX
+    // MIDIãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ‘ãƒ¼ã‚¹
     MidiFile midi_file;
     midi_file.read("sample.mid");
 
-    // ƒ}ƒXƒ^[ƒgƒ‰ƒbƒN‚Ìƒeƒ“ƒ|‚ðŒ³‚ÉA‘SMIDIƒCƒxƒ“ƒg‚ÌŽžŠÔ(•b)‚ðŒvŽZ
+    // ãƒžã‚¹ã‚¿ãƒ¼ãƒˆãƒ©ãƒƒã‚¯ã®ãƒ†ãƒ³ãƒã‚’å…ƒã«ã€å…¨MIDIã‚¤ãƒ™ãƒ³ãƒˆã®æ™‚é–“(ç§’)ã‚’è¨ˆç®—
     midi_file.doTimeAnalysis();
 
-    // ‘Sƒgƒ‰ƒbƒN‚ÌMIDIƒCƒxƒ“ƒg‚©‚çƒm[ƒgƒIƒ“‚¾‚¯Žæ‚èo‚µ‚ÄŽžŠÔ‚ðo—Í
+    // å…¨ãƒˆãƒ©ãƒƒã‚¯ã®MIDIã‚¤ãƒ™ãƒ³ãƒˆã‹ã‚‰ãƒŽãƒ¼ãƒˆã‚ªãƒ³ã ã‘å–ã‚Šå‡ºã—ã¦æ™‚é–“ã‚’å‡ºåŠ›
     for (int track = 0; track < midi_file.getTrackCount(); ++track) {
 
         for (int event = 0; event < midi_file[track].size(); ++event) {
