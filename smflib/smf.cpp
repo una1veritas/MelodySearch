@@ -12,7 +12,9 @@
 #include <deque>
 #include <vector>
 #include <algorithm>
+
 #include "smf.h"
+#include "instruments.h"
 
 const char * MIDIEvent::notename(uint8_t notenum) {
 	return MIDI::namesofnote[notenum % 12];
@@ -30,10 +32,7 @@ bool MIDIEvent::isProgChange() const {
 }
 
 bool MIDIEvent::isNoteOn() const {
-	if ( (status & 0xf0) == MIDI::MIDI_NOTEON and int(data[1]) > 0) {
-		return true;
-	}
-	return false;
+	return (status & 0xf0) == MIDI::MIDI_NOTEON;
 }
 
 bool MIDIEvent::isNoteOff() const {
@@ -212,18 +211,17 @@ std::ostream & MIDIEvent::printOn(std::ostream & out) const {
 		if ( delta > 0 )
 			out << delta << ", ";
 		switch(type) {
-		case MIDI::MIDI_NOTEOFF:
-			out << "NOTEOFF:" << channel() << ", "
-			<< notename() << octave(); // << ", " << int(evt.data[1]);
-			break;
 		case MIDI::MIDI_NOTEON:
+			out << "NOTE ON:" << channel() << ", " << notename() << octave();
 			if ( int(data[1]) > 0 ) {
-				out << "NOTE ON:" << channel() << ", "
-						<< notename() << octave() << ", " << int(data[1]);
+				out << ", " << int(data[1]);
 			} else {
-				out << "NOTEOFF*:" << channel() << ", "
-				<< notename() << octave(); // << ", " << int(evt.data[1]);
+				out << " OFF";
 			}
+			break;
+		case MIDI::MIDI_NOTEOFF:
+			out << "NOTE OFF:" << channel() << ", "
+			<< notename() << octave(); // << ", " << int(evt.data[1]);
 			break;
 		case MIDI::MIDI_POLYKEYPRESSURE:
 			out << "POLYKEY PRESS, " << channel() << ", "
@@ -419,6 +417,27 @@ std::ostream & MIDIEvent::printOn(std::ostream & out) const {
 	return out;
 }
 
+std::ostream & MIDIScoreElement::printOn(std::ostream & out) const {
+	out << "[" << int(channel+1) << ", ";
+	if ( isNote() ) {
+		out << time << " " << MIDIEvent::notename(number) << MIDIEvent::octave(number) << ", " << duration;
+	} else {
+		out << "PROG.CH. ";
+		uint16_t ix;
+		for(ix = 0; ix < sizeof(GM)/sizeof(PROGRAM_NAME); ++ix) {
+			if ( GM[ix].number == number )
+				break;
+		}
+		if ( ix < sizeof(GM)/sizeof(PROGRAM_NAME) ) {
+			out << GM[ix].name;
+		} else {
+			out << int(number);
+		}
+	}
+	out << "]";
+	return out;
+}
+
 MIDI::MIDI(std::istream & smffile) {
 	std::istreambuf_iterator<char> itr(smffile);
 	std::istreambuf_iterator<char> end_itr;
@@ -511,6 +530,7 @@ std::ostream & MIDI::header_info(std::ostream & out) const {
 	return out;
 }
 
+/*
 // MIDI の tracks に含まれるトラックをスキャンし，
 // note-on と note-off イベントの組を音符 MIDINote として開始時刻，音程，長さの組
 // に解釈し，MIDINote の開始時刻順の列として返す．
@@ -596,3 +616,4 @@ std::vector<MIDINote> MIDI::score(const std::vector<int> & channels, const std::
 
 	return noteseq;
 }
+*/

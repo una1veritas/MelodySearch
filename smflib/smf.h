@@ -93,6 +93,7 @@ struct MIDIEvent {
 	}
 
 	bool isNoteOn() const;
+
 	bool isNoteOff() const;
 
 	int channel(void) const {
@@ -144,48 +145,32 @@ struct MIDIEvent {
 
 };
 
-
-struct MIDINote {
+struct MIDIScoreElement {
 	uint32_t time;
 	uint8_t channel;
 	uint8_t number;
 	uint32_t duration;
 
-	MIDINote(uint32_t t, const MIDIEvent & e, uint32_t d = 0) : time(t), channel(e.channel()), number(e.notenumber()), duration(d) { }
+	MIDIScoreElement(const int32_t t, const uint8_t ch, const uint8_t nn, const uint32_t d = 0)
+	: time(t), channel(ch), number(nn), duration(d) { }
 
-	bool operator==(const MIDINote & rgt) const {
-		return (time == rgt.time) && (channel == rgt.channel)
-				&& (number == rgt.number) && (duration == rgt.duration);
+	MIDIScoreElement(const uint8_t ch, const uint8_t prog)
+	: time(0xFFFFFFFF), channel(ch), number(prog), duration(0) { }
+
+	bool isProgChange() const {
+		return time == 0xFFFFFFFF;
 	}
 
-	bool operator<(const MIDINote & rgt) const {
-		if (time < rgt.time) {
-			return true;
-		} else if (time > rgt.time)
-			return false;
-		if (channel < rgt.channel) {
-			return true;
-		} else if (channel > rgt.channel)
-			return false;
-		if (number < rgt.number) {
-			return true;
-		} else if (number > rgt.number)
-			return false;
-		if (duration < rgt.duration) {
-			return true;
-		}
-		return false;
+	bool isNote() const {
+		return time != 0xFFFFFFFF;
 	}
 
-	friend std::ostream & operator<<(std::ostream & out, const MIDINote & n) {
-		out << "[";
-		out << std::dec << n.time << ", " << int(n.channel) << ".";
-		out << MIDIEvent::notename(n.number) << MIDIEvent::octave(n.number) << ", " << n.duration;
-		out << "]";
-		return out;
+	std::ostream & printOn(std::ostream & out) const;
+
+	friend std::ostream & operator<<(std::ostream & out, const MIDIScoreElement & n) {
+		return n.printOn(out);
 	}
 };
-
 
 class MIDI {
 private:
@@ -286,9 +271,10 @@ public:
 		return _tracks[i];
 	}
 
+	/*
 	std::vector<MIDINote> score() const;
 	std::vector<MIDINote> score(const std::vector<int> & channels, const std::vector<int> & progs) const;
-
+*/
 	std::ostream & header_info(std::ostream & out) const;
 
 	friend std::ostream & operator<<(std::ostream & out, const MIDI & midi) {
