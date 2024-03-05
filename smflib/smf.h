@@ -248,6 +248,14 @@ public:
 		_format = 0, _division = 0;
 	}
 
+	uint32_t size() const {
+		uint32_t tally = 0;
+		for(const auto & trk : _tracks) {
+			tally += trk.size();
+		}
+		return tally;
+	}
+
 	bool is_empty(void) const {
 		return _tracks.empty();
 	}
@@ -277,8 +285,6 @@ public:
 	const std::vector<MIDIEvent> & track(int i) const {
 		return _tracks[i];
 	}
-
-	std::vector<MIDIEvent> eventqueue() const;
 
 	std::vector<MIDINote> score() const;
 	std::vector<MIDINote> score(const std::vector<int> & channels, const std::vector<int> & progs) const;

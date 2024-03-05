@@ -30,7 +30,7 @@ bool MIDIEvent::isProgChange() const {
 }
 
 bool MIDIEvent::isNoteOn() const {
-	if ( (status & 0xf0) == MIDI::MIDI_NOTEON ) {
+	if ( (status & 0xf0) == MIDI::MIDI_NOTEON and int(data[1]) > 0) {
 		return true;
 	}
 	return false;
@@ -217,8 +217,13 @@ std::ostream & MIDIEvent::printOn(std::ostream & out) const {
 			<< notename() << octave(); // << ", " << int(evt.data[1]);
 			break;
 		case MIDI::MIDI_NOTEON:
-			out << "NOTE ON:" << channel() << ", "
-			<< notename() << octave() << ", " << int(data[1]);
+			if ( int(data[1]) > 0 ) {
+				out << "NOTE ON:" << channel() << ", "
+						<< notename() << octave() << ", " << int(data[1]);
+			} else {
+				out << "NOTEOFF*:" << channel() << ", "
+				<< notename() << octave(); // << ", " << int(evt.data[1]);
+			}
 			break;
 		case MIDI::MIDI_POLYKEYPRESSURE:
 			out << "POLYKEY PRESS, " << channel() << ", "
@@ -504,16 +509,6 @@ std::ostream & MIDI::header_info(std::ostream & out) const {
 	out << ", num. of Tracks = " << _tracks.size();
 	out << ", division = " << _division;
 	return out;
-}
-
-std::vector<MIDIEvent> MIDI::eventqueue() const {
-	std::vector<MIDIEvent> evtq;
-	for(uint32_t i = 0; i < tracks().size(); ++i) {
-		for(const auto & evt : track(i)) {
-			evtq.push_back(evt);
-		}
-	}
-	return evtq;
 }
 
 // MIDI の tracks に含まれるトラックをスキャンし，

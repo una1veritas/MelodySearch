@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 		std::cerr << "SMF読み込み失敗" << std::endl;
 		return EXIT_FAILURE;
 	}
-	cout << midi << endl;
+	cout << "基本情報" << endl << midi << endl;
 	cout << "." << endl;
 
 	std::cout << "SMPTE " << midi.isSMPTE() << " resolution = " << midi.resolution() << " format = " << midi.format() << std::endl;
@@ -40,12 +40,26 @@ int main(int argc, char **argv) {
 		cout << t.size() << " ";
 	}
 	cout << std::endl;
-	vector<MIDIEvent> queue = midi.eventqueue();
-	cout << "the number of events = " << queue.size() << endl << endl;
-	for(const auto & evt : queue) {
-		if ( ! evt.isNote() )
-			cout << endl;
-		cout << evt ;
+
+	cout << "the number of events = " << midi.size() << endl << endl;
+
+	enum {
+		isnote,
+		isnotnote,
+	} prevtype;
+	for(unsigned int idx = 0; idx < midi.tracks().size(); ++idx) {
+		cout << endl << endl << "Track " << (idx+1) << endl;
+		prevtype = isnotnote;
+		for(const auto & evt : midi.track(idx) ) {
+			if ( evt.deltaTime() > 0 )
+				cout << endl;
+			cout << evt ;
+			if ( evt.isNote() ) {
+				 prevtype = isnote;
+			} else {
+				 prevtype = isnotnote;
+			}
+		}
 	}
 	cout << endl;
 	return 0;
