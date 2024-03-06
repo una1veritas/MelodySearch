@@ -179,13 +179,18 @@ struct PROGRAM_NAME {
 
 /*
 The following is a list of percussion instruments played on MIDI channel 9.
-
-Hexadecimal
-value	Decimal
-value	Note	Instrument
-0x23	35	B	Acoustic bass drum
-0x24	36	C	Bass drum 1
-0x25	37	C#/Db	Side stick
+*/
+struct PERCUSSION_NAME {
+	uint8_t number;
+	const char name[40];
+} PERCUSSION[] = {
+//Hexadecimal
+//value	Decimal
+//value	Note	Instrument
+	{ 35, "Acoustic bass drum" },
+	{ 36, "Bass drum 1" },
+	{ 37, "Side stick" },
+	/*
 0x26	38	D	Acoustic snare
 0x27	39	D#/Eb	Hand clap
 0x28	40	E	Electric snare
@@ -231,5 +236,6 @@ value	Note	Instrument
 0x50	80	G#/Ab	Mute triangle
 0x51	81	A	Open triangle
 */
+};
 
 #endif /* INSTRUMENTS_H_ */

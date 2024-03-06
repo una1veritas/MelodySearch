@@ -14,7 +14,6 @@
 #include <algorithm>
 
 #include "smf.h"
-#include "instruments.h"
 
 const char * MIDIEvent::notename(uint8_t notenum) {
 	return MIDI::namesofnote[notenum % 12];
@@ -414,27 +413,6 @@ std::ostream & MIDIEvent::printOn(std::ostream & out) const {
 		out << ")";
 		// error.
 	}
-	return out;
-}
-
-std::ostream & MIDIScoreElement::printOn(std::ostream & out) const {
-	out << "[" << int(channel+1) << ", ";
-	if ( isNote() ) {
-		out << time << " " << MIDIEvent::notename(number) << MIDIEvent::octave(number) << ", " << duration;
-	} else {
-		out << "PROG.CH. ";
-		uint16_t ix;
-		for(ix = 0; ix < sizeof(GM)/sizeof(PROGRAM_NAME); ++ix) {
-			if ( GM[ix].number == number )
-				break;
-		}
-		if ( ix < sizeof(GM)/sizeof(PROGRAM_NAME) ) {
-			out << GM[ix].name;
-		} else {
-			out << int(number);
-		}
-	}
-	out << "]";
 	return out;
 }
 

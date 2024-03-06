@@ -145,32 +145,6 @@ struct MIDIEvent {
 
 };
 
-struct MIDIScoreElement {
-	uint32_t time;
-	uint8_t channel;
-	uint8_t number;
-	uint32_t duration;
-
-	MIDIScoreElement(const int32_t t, const uint8_t ch, const uint8_t nn, const uint32_t d = 0)
-	: time(t), channel(ch), number(nn), duration(d) { }
-
-	MIDIScoreElement(const uint8_t ch, const uint8_t prog)
-	: time(0xFFFFFFFF), channel(ch), number(prog), duration(0) { }
-
-	bool isProgChange() const {
-		return time == 0xFFFFFFFF;
-	}
-
-	bool isNote() const {
-		return time != 0xFFFFFFFF;
-	}
-
-	std::ostream & printOn(std::ostream & out) const;
-
-	friend std::ostream & operator<<(std::ostream & out, const MIDIScoreElement & n) {
-		return n.printOn(out);
-	}
-};
 
 class MIDI {
 private:
