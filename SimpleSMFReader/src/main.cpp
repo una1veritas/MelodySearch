@@ -107,15 +107,10 @@ int main(int argc, char **argv) {
 						score[ch].push_back(ScoreElement(gtime, evt.notenumber(), evt.velocity(), 0));
 					} else {
 						//cerr << evt << " " << score[ch].back().time << ", " << gtime << endl;
-
 						auto itr = score[ch].begin();
-						for( ; itr != score[ch].end(); ++itr) {
-							if ( itr->time > gtime )
-								break;
-						}
+						for( ; itr != score[ch].end() and itr->time <= gtime; ++itr) ;
 						--itr;
 						score[ch].insert(itr, ScoreElement(gtime, evt.notenumber(), evt.velocity(), 0));
-
 					}
 				} else if ( evt.isNoteOff() or (evt.isNoteOn() and evt.velocity() == 0 ) ) {
 					for(auto itr = score[ch].rbegin(); itr != score[ch].rend(); ++itr) {
@@ -130,10 +125,7 @@ int main(int argc, char **argv) {
 					} else {
 						//cerr << evt << " " << score[ch].back().time << ", " << gtime << endl;
 						auto itr = score[ch].begin();
-						for(; itr != score[ch].end(); ++itr) {
-							if ( itr->time > gtime )
-								break;
-						}
+						for(; itr != score[ch].end() and itr->time <= gtime; ++itr) ;
 						--itr;
 						score[ch].insert(itr, ScoreElement(gtime, evt.prognumber()));
 					}
@@ -148,14 +140,18 @@ int main(int argc, char **argv) {
 		gtime = 0;
 		if (!score[ch].size())
 			continue;
-		cout << endl << endl << "Channel " << ch+1 << endl;
-		for(const auto & ele : score[ch]) {
-			if ( gtime != ele.time )
-				cout << endl << ele.time << " ";
-			cout << ele;
-			gtime = ele.time;
+		cout << endl << endl << "Channel " << ch << endl;
+		int idx = 0;
+		while ( idx < score[ch].size() ) {
+			gtime = score[ch][idx].time;
+			cout << endl << gtime << " ";
+			cout << score[ch][idx];
+			for( ; idx + 1 < score[ch].size() and score[ch][idx+1].time == gtime; ++idx) {
+				cout << score[ch][idx+1];
+			}
+			++idx;
 		}
 	}
-
+	cout << endl;
 	return 0;
 }

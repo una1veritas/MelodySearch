@@ -66,14 +66,12 @@ struct PROGRAM_NAME {
 		{ 40,	"Violin" },
 		{ 41,	"Viola" },
 		{ 42,	"Cello" },
-		/*
-0x2B	43	Contrabass
-0x2C	44	Tremolo strings
-0x2D	45	Pizzicato strings
-0x2E	46	Orchestral strings / harp
-0x2F	47	Timpani
-*/
- 	 //	Ensemble
+		{ 43,	"Contrabass" },
+		{ 44,	"Tremolo strings" },
+		{ 45,	"Pizzicato strings" },
+		{ 46,	"Orchestral strings / harp" },
+		{ 47,	"Timpani" },
+	 //	Ensemble
 		{ 48,	"String ensemble 1" },
 		{ 49,	"String ensemble 2 / slow strings" },
 		{ 50,	"Synth strings 1" },
@@ -82,7 +80,7 @@ struct PROGRAM_NAME {
 		{ 53,	"Voice oohs" },
 		{ 54,	"Synth choir / voice" },
 		{ 55,	"Orchestra hit" },
- 	 	// Brass
+ 	// Brass
 		{ 56,	"Trumpet" },
 		{ 57,	"Trombone" },
 		{ 58,	"Tuba" },
@@ -101,18 +99,15 @@ struct PROGRAM_NAME {
 0x45	69	English horn
 0x46	70	Bassoon
 0x47	71	Clarinet
- 	 	Pipe
-0x48	72	Piccolo
-0x49	73	Flute
-*/
+ 	*/ // Pipe
+		{ 72,	"Piccolo" },
+		{ 73,	"Flute" },
 		{ 74,	"Recorder" },
 		{ 75,	"Pan flute" },
-		/*
-0x4C	76	Bottle blow / blown bottle
-0x4D	77	Shakuhachi
-0x4E	78	Whistle
-0x4F	79	Ocarina
-*/
+		{ 76, 	"Bottle blow / blown bottle" },
+		{ 77, 	"Shakuhachi" },
+		{ 78,	"Whistle" },
+		{ 79,	"Ocarina" },
  	// 	Synth lead
 		{ 80,	"Synth square wave" },
 		{ 81,	"Synth saw wave" },
@@ -180,29 +175,31 @@ struct PROGRAM_NAME {
 /*
 The following is a list of percussion instruments played on MIDI channel 9.
 */
-struct PERCUSSION_NAME {
+struct DRUMS_NAME {
 	uint8_t number;
 	const char name[40];
-} PERCUSSION[] = {
+} DRUMS[] = {
 //Hexadecimal
 //value	Decimal
 //value	Note	Instrument
 	{ 35, "Acoustic bass drum" },
 	{ 36, "Bass drum 1" },
 	{ 37, "Side stick" },
+	{ 38,	"Acoustic snare" },
+	{ 39,	"Hand clap" },
+	{ 40,	"Electric snare" },
 	/*
-0x26	38	D	Acoustic snare
-0x27	39	D#/Eb	Hand clap
-0x28	40	E	Electric snare
 0x29	41	F	Low floor tom
 0x2A	42	F#/Gb	Closed hihat
 0x2B	43	G	High floor tom
 0x2C	44	G#/Ab	Pedal hihat
 0x2D	45	A	Low tom
-0x2E	46	A#/Bb	Open hihat
-0x2F	47	B	Low-mid tom
-0x30	48	C	High-mid tom
-0x31	49	C#/Db	Crash cymbal 1
+*/
+	{ 46,	"Open hihat" },
+	{ 47,	"Low-mid tom" },
+	{ 48, 	"High-mid tom" },
+	{ 49, 	"Crash cymbal 1" },
+	/*
 0x32	50	D	High tom
 0x33	51	D#/Eb	Ride cymbal 1
 0x34	52	E	Chinese cymbal
