@@ -15,33 +15,35 @@
 
 #include "smf.h"
 
-const char * MIDIEvent::notename(uint8_t notenum) {
+using namespace smf;
+
+const char * Event::notename(uint8_t notenum) {
 	return MIDI::namesofnote[notenum % 12];
 }
 
-bool MIDIEvent::isMeta(void) const {
+bool Event::isMeta(void) const {
 	return status == MIDI::META;
 }
 
-bool MIDIEvent::isProgChange() const {
+bool Event::isProgChange() const {
 	if ( (status & 0xf0) == MIDI::MIDI_PROGRAMCHANGE) {
 		return true;
 	}
 	return false;
 }
 
-bool MIDIEvent::isNoteOn() const {
+bool Event::isNoteOn() const {
 	return (status & 0xf0) == MIDI::MIDI_NOTEON;
 }
 
-bool MIDIEvent::isNoteOff() const {
+bool Event::isNoteOff() const {
 	return (status & 0xf0) == MIDI::MIDI_NOTEOFF;
 }
 
-const char * MIDIEvent::notename() const {
+const char * Event::notename() const {
 	if ( !isNote() )
 		return MIDI::namesofnote[12];
-	return MIDIEvent::notename(data[0]);
+	return Event::notename(data[0]);
 }
 
 // read 4 bytes to get a 32 bit value in the big endian byte order
@@ -137,7 +139,7 @@ smf::event::event(std::istreambuf_iterator<char> & itr, uint8_t laststatus) {
 }
 */
 
-void MIDIEvent::read_databytes(std::istreambuf_iterator<char> & itr) {
+void Event::read_databytes(std::istreambuf_iterator<char> & itr) {
 	std::istreambuf_iterator<char> end_itr;
 	uint32_t len;
 	uint8_t type = status & 0xf0;
@@ -203,7 +205,7 @@ void MIDIEvent::read_databytes(std::istreambuf_iterator<char> & itr) {
 	//std::cout << *this << std::endl;
 }
 
-std::ostream & MIDIEvent::printOn(std::ostream & out) const {
+std::ostream & Event::printOn(std::ostream & out) const {
 	uint8_t type = status & 0xf0;
 	if ( (MIDI::MIDI_NOTEOFF <= type) && (type <= MIDI::MIDI_PITCHBEND) ) {
 		out << "(";
@@ -442,9 +444,9 @@ MIDI::MIDI(std::istream & smffile) {
 			//uint32_t len =
 			get_uint32BE(itr);  // read to skip the track length
 			//std::cerr << len << std::endl;
-			_tracks.push_back(std::vector<MIDIEvent>());
+			_tracks.push_back(std::vector<Event>());
 			uint8_t status_buffer = 0;
-			MIDIEvent ev;
+			Event ev;
 			//long counter = 0;
 			do {
 				// clear status byte and data bytes
@@ -454,7 +456,7 @@ MIDI::MIDI(std::istream & smffile) {
 				// check status byte or data byte
 				ev.status = *itr;
 				// set buffer 'status' if status byte
-				if ( MIDIEvent::check_isStatusByte(ev.status) ) {
+				if ( Event::check_isStatusByte(ev.status) ) {
 					++itr; // advance to the head of data bytes
 					if ( ev.isMIDI() ) {
 						status_buffer = ev.status;
@@ -508,90 +510,64 @@ std::ostream & MIDI::header_info(std::ostream & out) const {
 	return out;
 }
 
-/*
-// MIDI の tracks に含まれるトラックをスキャンし，
-// note-on と note-off イベントの組を音符 MIDINote として開始時刻，音程，長さの組
-// に解釈し，MIDINote の開始時刻順の列として返す．
-std::vector<MIDINote> MIDI::score() const {
-	const std::vector<int> chs = std::vector<int>() ;
-	const std::vector<int> prgs = std::vector<int>();
-	return MIDI::score(chs, prgs);
-}
-
-std::vector<MIDINote> MIDI::score(const std::vector<int> & channels, const std::vector<int> & progs) const {
-	std::vector<MIDINote> noteseq;
-	struct track_info {
-		std::vector<MIDIEvent>::const_iterator iter; // iterator
-		uint64_t elapsed;    // time elapsed from the start to just before delta time of *iter
-	} track[tracks().size()];
-	for(uint32_t i = 0; i < tracks().size(); ++i) {
-		track[i] = { _tracks[i].cbegin(), 0 };
+std::vector<std::vector<ScoreElement> > MIDI::channel_score() {
+	std::vector<std::vector<ScoreElement> > score;
+	uint32_t gtime;
+	for(int ch = 0; ch < 16; ++ch) {
+		score.push_back(std::vector<ScoreElement>());
 	}
-
-	struct sound {
-		struct onoff {
-			bool on;
-			uint64_t index;
-
-			onoff() : on(false), index(0) {}
-		} note[128];
-	} midi[16];
-
-	int program[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, };
-
-	uint64_t globaltime = 0, nextglobal[tracks().size()];
-	//int cnt = 0;
-	while (true) {
-		for(uint32_t i = 0; i < tracks().size(); ++i) {
-			nextglobal[i] = 0;
-			while ( (! track[i].iter->isEoT())
-					&& (track[i].elapsed + track[i].iter->deltaTime() <= globaltime) ) {
-				const MIDIEvent & evt = *(track[i].iter);
-				const int evt_chan = evt.channel();
-				//const int evt_prog = program[evt_chan];
-				//std::cout << i << " " <<track[i].elapsed + track[i].iter->deltaTime() << " " << evt << std::endl;
-				if ( evt.isNote() ) {
-					//const int chs = std::count(channels.begin(), channels.end(), evt_chan);
-					const bool is_target_channel = channels.empty() || (std::count(channels.begin(), channels.end(), evt_chan) > 0);
-					const bool is_target_prog = progs.empty() || (std::count(progs.begin(), progs.end(), program[evt_chan]) > 0);
-					if ( evt.isNoteOn() && evt.velocity() > 0 ) {
-						midi[evt.channel()].note[evt.notenumber()].on = true;
-						if ( is_target_channel && is_target_prog ) {
-							noteseq.push_back(MIDINote(globaltime, evt));
-							midi[evt.channel()].note[evt.notenumber()].index = noteseq.size() - 1;
-						}
+	for(unsigned int idx = 0; idx < tracks().size(); ++idx) {
+		//cout << endl << endl << "Track " << (idx+1) << endl;
+		gtime = 0;
+		for(const auto & evt : track(idx) ) {
+			gtime += evt.deltaTime();
+			const uint8_t & ch = evt.channel();
+			if ( evt.isNote() or evt.isProgChange() ) {
+				if ( evt.isNoteOn() and evt.velocity() > 0 ) {
+					if (score[ch].size() == 0 or score[ch].back().time <= gtime) {
+						score[ch].push_back(ScoreElement(gtime, evt, 0));
 					} else {
-						midi[evt.channel()].note[evt.notenumber()].on = false;
-						if ( is_target_channel && is_target_prog ) {
-							const int & idx = midi[evt.channel()].note[evt.notenumber()].index;
-							noteseq[idx].duration = globaltime - noteseq[idx].time;
+						//cerr << evt << " " << score[ch].back().time << ", " << gtime << endl;
+						auto itr = score[ch].begin();
+						for( ; itr != score[ch].end() and itr->time <= gtime; ++itr) ;
+						--itr;
+						score[ch].insert(itr, ScoreElement(gtime, evt));
+					}
+				} else if ( evt.isNoteOff() or (evt.isNoteOn() and evt.velocity() == 0 ) ) {
+					for(auto itr = score[ch].rbegin(); itr != score[ch].rend(); ++itr) {
+						if ( itr->number == evt.notenumber() ) {
+							itr->duration = gtime - itr->time;
+							break;
 						}
 					}
-				} else if (evt.isProgChange() ) {
-					program[evt_chan] = evt.prognumber();
-					std::cout << globaltime << " " << evt_chan << " " << program[evt_chan] << std::endl;
+				} else if ( evt.isProgChange() ) {
+					if (score[ch].size() == 0 or score[ch].back().time <= gtime) {
+						score[ch].push_back(ScoreElement(gtime, evt));
+					} else {
+						//cerr << evt << " " << score[ch].back().time << ", " << gtime << endl;
+						auto itr = score[ch].begin();
+						for(; itr != score[ch].end() and itr->time <= gtime; ++itr) ;
+						--itr;
+						score[ch].insert(itr, ScoreElement(gtime, evt));
+					}
 				}
-				// go iterator forward
-				track[i].elapsed += track[i].iter->deltaTime();
-				//std::cout << track[i].elapsed << "; ";
-				++track[i].iter;
-				nextglobal[i] = globaltime + track[i].iter->deltaTime();
-			}
-			if ( track[i].iter->isEoT() )
-				continue;
-		}
-		uint64_t next = UINT64_MAX;
-		for(unsigned int i = 0; i < tracks().size(); ++i) {
-			if ( nextglobal[i] != 0 ) {
-				next = nextglobal[i] < next ? nextglobal[i] : next ;
+				//cout << evt;
 			}
 		}
-		//std::cout << "next " << next << std::endl;
-		if ( next == UINT64_MAX )
-			break;
-		globaltime = next;
 	}
-
-	return noteseq;
+	return score;
 }
-*/
+
+std::ostream & ScoreElement::printOn(std::ostream & out) const {
+	out << "[";
+	if ( isNote() ) {
+		out << Event::notename(number) << Event::octave(number) << ", " << duration;
+	} else if ( isPercussion() ) {
+		out << GeneralMIDI::percussion_name(number);
+	} else {
+		out << " PROG.CH. " << GeneralMIDI::program_name(number);
+	}
+	out << "]";
+	return out;
+}
+
