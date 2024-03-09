@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <bitset>
 #include <algorithm>
 #include <stdexcept>
 
@@ -13,28 +14,82 @@ using namespace smf;
 
 class Chord {
 	std::vector<int> _notes;
+	bitset<12> signature;
+
+	const std::vector<int> basic_chord[11] = {
+			// Major
+			{4, 3, 5},
+			// 6th
+			{4, 3, 2, 3},
+			// 7th
+			{4, 3, 3, 2},
+			// maj7
+			{4, 3, 4, 1},
+			// 9th
+			{2, 5, 5},
+			// Minor
+			{3, 4, 5},
+			// m7
+			{3, 4, 3, 2},
+			// m7-5
+			{3, 3, 4, 2},
+			// dim
+			{3, 3, 3, 3},
+			// 7sus4
+			{5, 2, 3, 2},
+			// aug
+			{4, 4, 4},
+	};
 
 public:
 	Chord(const std::vector<uint8_t> & midinotes) {
 		for(const auto & note: midinotes) {
 			_notes.push_back(note);
+			signature.set(note % 12);
 		}
 		std::sort(_notes.begin(), _notes.end());
 	}
 
 	Chord & append(const uint8_t note) {
 		_notes.insert(std::upper_bound(_notes.begin(), _notes.end(), note), note);
+		signature.set(note % 12);
 		return *this;
 	}
 
 	const std::vector<int> & notes() const { return _notes; }
 
+	std::vector<int> gaps() const {
+		std::vector<int> g;
+		int b = _notes[0] % 12;
+		for(int d = 1; d < 13; ++d) {
+			if ( signature[(b+d) % 12] )
+				g.push_back(d);
+		}
+		b = g[0];
+		for(int i = 1; i < g.size(); ++i) {
+			int t = g[i];
+			g[i] = g[i] - b;
+			b = t;
+		}
+		return g;
+	}
+
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
+		bitset<12> elems(0ul);
 		out << "Chord[";
 		for(const auto & note : chord.notes()) {
-			out << Event::notename(note) <<Event::octave(note) << ", ";
+			if ( !elems[note % 12] ) {
+				out << Event::notename(note) <<Event::octave(note) << ", ";
+				elems.set(note%12);
+			} else {
+				out << "(" << Event::notename(note) <<Event::octave(note) << "), ";
+			}
 		}
 		out << "] ";
+		std::vector<int> g = chord.gaps();
+		for(auto & e : g) {
+			out << e << " ";
+		}
 		return out;
 	}
 
@@ -71,13 +126,13 @@ int main(int argc, char **argv) {
 	}
 	cout << std::endl;
 
-	cout << "the number of events = " << midi.size() << endl << endl;
+	//cout << "the number of events = " << midi.size() << endl << endl;
 
 	vector<vector<ScoreElement> > score = midi.channel_score();
 	cout << endl << "finished." << endl;
 
 	uint32_t gtime;
-	vector<unsigned int> chs({4, 6});
+	vector<unsigned int> chs({3, 4, 6});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
