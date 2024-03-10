@@ -16,29 +16,34 @@ class Chord {
 	std::vector<int> _notes;
 	bitset<12> signature;
 
-	const std::vector<int> basic_chord[11] = {
+public:
+	static constexpr struct chord_name {
+		uint8_t intervals[5];
+		uint8_t no;
+		const string name;
+	} CHORD_NAMES[] = {
 			// Major
-			{4, 3, 5},
+			{{4, 3, 5}, 3, "(M)"},
 			// 6th
-			{4, 3, 2, 3},
+			{{4, 3, 2, 3}, 4, "6th"},
 			// 7th
-			{4, 3, 3, 2},
+			{{4, 3, 3, 2}, 4, "7th"},
 			// maj7
-			{4, 3, 4, 1},
+			{{4, 3, 4, 1}, 4, "maj7"},
 			// 9th
-			{2, 5, 5},
+			{{2, 5, 5}, 3, "9th"},
 			// Minor
-			{3, 4, 5},
+			{{3, 4, 5}, 3, "m"},
 			// m7
-			{3, 4, 3, 2},
+			{{3, 4, 3, 2}, 4, "m7"},
 			// m7-5
-			{3, 3, 4, 2},
+			{{3, 3, 4, 2}, 4, "m7-5"},
 			// dim
-			{3, 3, 3, 3},
+			{{3, 3, 3, 3}, 4, "dim"},
 			// 7sus4
-			{5, 2, 3, 2},
+			{{5, 2, 3, 2}, 4, "7sus4"},
 			// aug
-			{4, 4, 4},
+			{{4, 4, 4}, 3, "aug"},
 	};
 
 public:
@@ -58,20 +63,35 @@ public:
 
 	const std::vector<int> & notes() const { return _notes; }
 
-	std::vector<int> gaps() const {
-		std::vector<int> g;
-		int b = _notes[0] % 12;
-		for(int d = 1; d < 13; ++d) {
-			if ( signature[(b+d) % 12] )
-				g.push_back(d);
-		}
-		b = g[0];
-		for(int i = 1; i < g.size(); ++i) {
-			int t = g[i];
-			g[i] = g[i] - b;
-			b = t;
+	std::vector<uint8_t> gaps() const {
+		std::vector<uint8_t> g;
+		int base = _notes[0] % 12;
+		int prev = base;
+		for(int ix = 1; ix <= 12; ++ix) {
+			if ( signature[(base + ix) % 12] ) {
+				g.push_back( ((base + ix - prev) % 12)  );
+				prev = (base + ix) % 12;
+			}
 		}
 		return g;
+	}
+
+	string equiv() const {
+		std::vector<uint8_t> g = gaps();
+		for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
+			if ( g.size() != CHORD_NAMES[cnum].no )
+				continue;
+			for(unsigned i = 0; i < g.size(); ++i) {
+				unsigned j;
+				for(j = 0; j < g.size(); ++j) {
+					if ( g[(i+j) % g.size()] != CHORD_NAMES[cnum].intervals[j] )
+						break;
+				}
+				if ( j == g.size() )
+					return Event::notename(_notes[i]) + CHORD_NAMES[cnum].name;
+			}
+		}
+		return "";
 	}
 
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
@@ -86,10 +106,7 @@ public:
 			}
 		}
 		out << "] ";
-		std::vector<int> g = chord.gaps();
-		for(auto & e : g) {
-			out << e << " ";
-		}
+		out << chord.equiv();
 		return out;
 	}
 
@@ -132,7 +149,7 @@ int main(int argc, char **argv) {
 	cout << endl << "finished." << endl;
 
 	uint32_t gtime;
-	vector<unsigned int> chs({3, 4, 6});
+	vector<unsigned int> chs({3, 4, 5, 6, 7, 8, 10, 11});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
