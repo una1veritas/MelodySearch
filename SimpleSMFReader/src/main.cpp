@@ -18,32 +18,44 @@ class Chord {
 
 public:
 	static constexpr struct chord_name {
-		uint8_t intervals[5];
-		uint8_t no;
-		const string name;
-	} CHORD_NAMES[] = {
+		string intervals, name;
+	} CHORD_NAMES[]	= {
 			// Major
-			{{4, 3, 5}, 3, "(M)"},
+			{"435", "(M)"},
 			// 6th
-			{{4, 3, 2, 3}, 4, "6th"},
+			{"4323", "6th"},
 			// 7th
-			{{4, 3, 3, 2}, 4, "7th"},
+			{"4332", "7th"},
 			// maj7
-			{{4, 3, 4, 1}, 4, "maj7"},
+			{"4341", "maj7"},
 			// 9th
-			{{2, 5, 5}, 3, "9th"},
+			{"22332", "9th"},
 			// Minor
-			{{3, 4, 5}, 3, "m"},
+			{"345", "m"},
 			// m7
-			{{3, 4, 3, 2}, 4, "m7"},
+			{"3432", "m7"},
 			// m7-5
-			{{3, 3, 4, 2}, 4, "m7-5"},
+			{"3342", "m7-5"},
 			// dim
-			{{3, 3, 3, 3}, 4, "dim"},
+			{"3333", "dim"},
 			// 7sus4
-			{{5, 2, 3, 2}, 4, "7sus4"},
+			{"5232", "7sus4"},
 			// aug
-			{{4, 4, 4}, 3, "aug"},
+			{"444", "aug"},
+	};
+
+	enum chords {
+		MAJ = 0,
+		MAJ6TH,
+		MAJ7TH,
+		MAJ7,
+		MAJ9TH,
+		MIN,
+		MIN7,
+		MIN7_5,
+		MINDIM,
+		MIN7SUS4,
+		MINAUG,
 	};
 
 public:
@@ -53,6 +65,81 @@ public:
 			signature.set(note % 12);
 		}
 		std::sort(_notes.begin(), _notes.end());
+	}
+
+	Chord(const uint8_t rootnote, const string & intervalstr) {
+		set(rootnote, intervalstr);
+	}
+
+	Chord(const string & chordname) {
+		uint8_t root = 60;
+		switch(chordname[0]) {
+		case 'C':
+			root = 60;
+			break;
+		case 'D':
+			root = 62;
+			break;
+		case 'E':
+			root = 64;
+			break;
+		case 'F':
+			root = 65;
+			break;
+		case 'G':
+			root = 67;
+			break;
+		case 'A':
+			root = 69;
+			break;
+		case 'B':
+			root = 71;
+			break;
+		}
+		if (chordname.length() >= 2) {
+			if ( chordname[1] == '#' ) {
+				root += 1;
+			} if ( chordname[1] == 'b' ) {
+				root -= 1;
+			}
+		}
+		uint8_t chord = MAJ;
+		if (chordname.length() > 2) {
+			if (chordname.ends_with("6th")) {
+				chord = MAJ6TH;
+			} else if (chordname.ends_with("7th")) {
+				chord = MAJ7TH;
+			} else if (chordname.ends_with("9th")) {
+				chord = MAJ9TH;
+			} else if (chordname.ends_with("dim")) {
+				chord = MINDIM;
+			} else if (chordname.ends_with("m")) {
+				chord = MIN;
+			} else if (chordname.ends_with("m7")) {
+				chord = MIN7;
+			} else if (chordname.ends_with("7")) {
+				chord = MAJ7;
+			} else if (chordname.ends_with("m7-5")) {
+				chord = MIN7_5;
+			} else if (chordname.ends_with("m7sus4")) {
+				chord = MIN7SUS4;
+			} else if (chordname.ends_with("aug")) {
+				chord = MINAUG;
+			}
+		}
+		set(root, CHORD_NAMES[chord].intervals);
+	}
+
+	Chord & set(const uint8_t rootnote, const string & intervalstr) {
+		cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
+		_notes.push_back(rootnote);
+		signature.set(rootnote % 12);
+		for(unsigned int i = 0; i < intervalstr.length() - 1; ++i) {
+			uint8_t nextnote = _notes.back() + (intervalstr[i] - '0');
+			_notes.push_back(nextnote);
+			signature.set(nextnote % 12);
+		}
+		return *this;
 	}
 
 	Chord & append(const uint8_t note) {
@@ -79,12 +166,12 @@ public:
 	string equiv() const {
 		std::vector<uint8_t> g = gaps();
 		for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
-			if ( g.size() != CHORD_NAMES[cnum].no )
+			if ( g.size() != CHORD_NAMES[cnum].intervals.size() )
 				continue;
 			for(unsigned i = 0; i < g.size(); ++i) {
 				unsigned j;
 				for(j = 0; j < g.size(); ++j) {
-					if ( g[(i+j) % g.size()] != CHORD_NAMES[cnum].intervals[j] )
+					if ( g[(i+j) % g.size()] != (CHORD_NAMES[cnum].intervals[j] - '0') )
 						break;
 				}
 				if ( j == g.size() )
@@ -148,8 +235,9 @@ int main(int argc, char **argv) {
 	vector<vector<ScoreElement> > score = midi.channel_score();
 	cout << endl << "finished." << endl;
 
+	cout << Chord(60, "255") << ", " << Chord("Cm7") << endl;
 	uint32_t gtime;
-	vector<unsigned int> chs({3, 4, 5, 6, 7, 8, 10, 11});
+	vector<unsigned int> chs({3, 4, 5, 6});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
