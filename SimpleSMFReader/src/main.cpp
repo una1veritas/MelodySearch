@@ -20,32 +20,42 @@ public:
 	static constexpr struct chord_name {
 		string intervals, name;
 	} CHORD_NAMES[]	= {
-			// Major
-			{"435", "(M)"},
-			// 6th
-			{"4323", "6th"},
-			// 7th
-			{"4332", "d7th"},
-			// maj7
-			{"4341", "maj7"},
-			// 9th
-			{"22332", "9th"},
-			// Minor
-			{"345", "m"},
-			// m7
-			{"3432", "m7"},
-			// half-diminished 7
-			{"3342", "m7b5"},
-			// dim
-			{"336", "dim"},
-			// diminished 7
-			{"3333", "dim7"},
-			// 7sus4
-			{"5232", "7sus4"},
-			// aug
-			{"444", "aug"},
+			{"0", "octv"}, 	// octave uniｓon
+			{"48", "add3"},
+			{"39", "add-3"},
+			{"57", "add5"},
+
+			{"435", ""},		// Major
+			{"435", "maj"},		// Major
+			{"345", "m"},		// Minor
+			{"4332", "7th"},	// 7th
+			{"4341", "maj7"},	// major 7th
+			{"3432", "m7"},		// minor 7th
+			{"3441", "mmaj7"},	// minor major 7th
+			{"4323", "6th"},	// 6th
+			{"3423", "m6"},		// minor 6th
+//			{"255", "9thsub7"},	// 9th sub7
+			{"22332", "9th"},	// 9th
+			{"22341", "maj9"},	// major 9th
+			{"21432", "m9"},	// minor 9th
+			{"22323", "69th"},	// 6 9th
+			{"21423", "m69"},	// minor 6 9th
+			{"525", "sus4"},	// sus4
+			{"5232", "7sus4"},	// 7th sus4
+			{"336", "dim"},		// dim
+			{"3333", "dim7"},	// diminished 7
+			{"444", "aug"},		// aug
+			{"4422", "aug7"},	// aug7
+			{"2235", "add9"},	// add9
+			{"4422", "7+5"},	// 7th #5
+			{"4242", "7-5"},	// 7th b5
+			{"3342", "m7-5"},	// minor 7th b5
+			{"31332", "7th(#9)"},	// 7th #9
+			{"13332", "7-9"},	// 7th b9
+
 	};
 
+	/*
 	enum chords {
 		MAJ = 0,
 		MAJ6TH,
@@ -60,7 +70,7 @@ public:
 		MIN7SUS4,
 		MINAUG,
 	};
-
+*/
 public:
 	Chord(const std::vector<uint8_t> & midinotes) {
 		for(const auto & note: midinotes) {
@@ -76,7 +86,8 @@ public:
 
 	Chord(const string & chordname) {
 		uint8_t root = 60;
-		switch(chordname[0]) {
+		unsigned int ix = 0;
+		switch(chordname[ix]) {
 		case 'C':
 			root = 60;
 			break;
@@ -99,35 +110,25 @@ public:
 			root = 71;
 			break;
 		}
+		uint8_t chord = 0;
 		if (chordname.length() >= 2) {
-			if ( chordname[1] == '#' ) {
+			ix += 1;
+			if ( chordname[ix] == '#' ) {
 				root += 1;
-			} if ( chordname[1] == 'b' ) {
+				ix += 1;
+			} if ( chordname[ix] == 'b' ) {
 				root -= 1;
+				ix += 1;
 			}
-		}
-		uint8_t chord = MAJ;
-		if (chordname.length() > 2) {
-			if (chordname.ends_with("6th")) {
-				chord = MAJ6TH;
-			} else if (chordname.ends_with("7th")) {
-				chord = MAJ7TH;
-			} else if (chordname.ends_with("9th")) {
-				chord = MAJ9TH;
-			} else if (chordname.ends_with("dim")) {
-				chord = MINDIM;
-			} else if (chordname.ends_with("m")) {
-				chord = MIN;
-			} else if (chordname.ends_with("m7")) {
-				chord = MIN7;
-			} else if (chordname.ends_with("7")) {
-				chord = MAJ7;
-			} else if (chordname.ends_with("m7-5")) {
-				chord = MIN7_5;
-			} else if (chordname.ends_with("m7sus4")) {
-				chord = MIN7SUS4;
-			} else if (chordname.ends_with("aug")) {
-				chord = MINAUG;
+
+			if (ix < chordname.length() - 1) {
+				const string suffix(chordname, ix);
+				for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
+					if (suffix == CHORD_NAMES[cnum].name) {
+						chord = cnum;
+						break;
+					}
+				}
 			}
 		}
 		set(root, CHORD_NAMES[chord].intervals);
@@ -238,9 +239,9 @@ int main(int argc, char **argv) {
 	vector<vector<ScoreElement> > score = midi.channel_score();
 	cout << endl << "finished." << endl;
 
-	cout << Chord(60, "255") << ", " << Chord("Cm7") << endl;
+	cout << Chord(60, "255") << ", " << Chord("A#sus4") << endl;
 	uint32_t gtime;
-	vector<unsigned int> chs({3, 4, 5, 6});
+	vector<unsigned int> chs({0, 1, 3, 4, 7});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
