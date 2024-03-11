@@ -25,7 +25,7 @@ public:
 			// 6th
 			{"4323", "6th"},
 			// 7th
-			{"4332", "7th"},
+			{"4332", "d7th"},
 			// maj7
 			{"4341", "maj7"},
 			// 9th
@@ -34,10 +34,12 @@ public:
 			{"345", "m"},
 			// m7
 			{"3432", "m7"},
-			// m7-5
-			{"3342", "m7-5"},
+			// half-diminished 7
+			{"3342", "m7b5"},
 			// dim
-			{"3333", "dim"},
+			{"336", "dim"},
+			// diminished 7
+			{"3333", "dim7"},
 			// 7sus4
 			{"5232", "7sus4"},
 			// aug
@@ -52,8 +54,9 @@ public:
 		MAJ9TH,
 		MIN,
 		MIN7,
-		MIN7_5,
+		MIN7B5,
 		MINDIM,
+		MINDIM7,
 		MIN7SUS4,
 		MINAUG,
 	};
