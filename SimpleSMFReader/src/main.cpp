@@ -6,6 +6,7 @@
 #include <bitset>
 #include <algorithm>
 #include <stdexcept>
+#include <cctype>
 
 #include "smf.h"
 
@@ -16,42 +17,56 @@ class Chord {
 	std::vector<int> _notes;
 	bitset<12> signature;
 
+private:
+	static uint8_t hexchar_to_uint(char c) {
+		c = toupper(c);
+		if (c < '0')
+			return 0xff;
+		if (c > 'F')
+			return 0xff;
+		if (c <= '9')
+			return c - '0';
+		if (c >= 'A')
+			return c - 'A' + 10;
+		return 0xff;
+	}
+
 public:
 	static constexpr struct chord_name {
 		string intervals, name;
 	} CHORD_NAMES[]	= {
-			{"0", "octv"}, 	// octave uniｓon
-			{"48", "add3"},
-			{"39", "add-3"},
-			{"57", "add5"},
+			{"0", " oct."}, 	// octave uniｓon
+			{"48", " &3"},
+			{"2a", " &-2"},
+			{"39", " &-3"},
+			{"57", " &5"},
 
-			{"435", ""},		// Major
-			{"435", "maj"},		// Major
+			{"435", ""},		// major
+			{"435", "maj"},		// major
 			{"345", "m"},		// Minor
-			{"4332", "7th"},	// 7th
-			{"4341", "maj7"},	// major 7th
+			{"4332", "7"},	// 7th
+			{"4341", "maj7"},	// major 7th Δ7
 			{"3432", "m7"},		// minor 7th
 			{"3441", "mmaj7"},	// minor major 7th
-			{"4323", "6th"},	// 6th
+			{"4323", "6"},	// 6th
 			{"3423", "m6"},		// minor 6th
-//			{"255", "9thsub7"},	// 9th sub7
-			{"22332", "9th"},	// 9th
+			{"22332", "9"},	// 9th
 			{"22341", "maj9"},	// major 9th
 			{"21432", "m9"},	// minor 9th
-			{"22323", "69th"},	// 6 9th
-			{"21423", "m69"},	// minor 6 9th
-			{"525", "sus4"},	// sus4
+			{"22323", "6/9"},	// 6 9th
+			{"21423", "m6/9"},	// minor 6 9th
+			{"525", "sus4"},	// sus4, sus
 			{"5232", "7sus4"},	// 7th sus4
-			{"336", "dim"},		// dim
+			{"336", "dim"},		// dim, diminished, 〇
 			{"3333", "dim7"},	// diminished 7
-			{"444", "aug"},		// aug
+			{"444", "aug"},		// aug, +
 			{"4422", "aug7"},	// aug7
 			{"2235", "add9"},	// add9
-			{"4422", "7+5"},	// 7th #5
+			{"4422", "7+5"},	// 7th #5 (tension)
 			{"4242", "7-5"},	// 7th b5
 			{"3342", "m7-5"},	// minor 7th b5
-			{"31332", "7th(#9)"},	// 7th #9
-			{"13332", "7-9"},	// 7th b9
+			{"31332", "7(#9)"},	// 7th #9
+			{"13332", "7(b9)"},	// 7th b9
 
 	};
 
@@ -139,7 +154,7 @@ public:
 		_notes.push_back(rootnote);
 		signature.set(rootnote % 12);
 		for(unsigned int i = 0; i < intervalstr.length() - 1; ++i) {
-			uint8_t nextnote = _notes.back() + (intervalstr[i] - '0');
+			uint8_t nextnote = _notes.back() + hexchar_to_uint(intervalstr[i]);
 			_notes.push_back(nextnote);
 			signature.set(nextnote % 12);
 		}
@@ -175,7 +190,7 @@ public:
 			for(unsigned i = 0; i < g.size(); ++i) {
 				unsigned j;
 				for(j = 0; j < g.size(); ++j) {
-					if ( g[(i+j) % g.size()] != (CHORD_NAMES[cnum].intervals[j] - '0') )
+					if ( g[(i+j) % g.size()] != hexchar_to_uint(CHORD_NAMES[cnum].intervals[j]) )
 						break;
 				}
 				if ( j == g.size() )
@@ -241,7 +256,7 @@ int main(int argc, char **argv) {
 
 	cout << Chord(60, "255") << ", " << Chord("A#sus4") << endl;
 	uint32_t gtime;
-	vector<unsigned int> chs({0, 1, 3, 4, 7});
+	vector<unsigned int> chs({0, 1, 2, 3, 4, 5, 6, 7});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
