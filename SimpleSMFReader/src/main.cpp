@@ -32,14 +32,18 @@ private:
 	}
 
 public:
-	static constexpr struct chord_name {
-		string intervals, name;
+	constexpr static struct chord_name {
+		const char intervals[8], name[16];
 	} CHORD_NAMES[]	= {
-			{"0", " oct."}, 	// octave uniｓon
+			{"0", " &oct"}, 	// octave uniｓon
 			{"48", " &3"},
 			{"2a", " &-2"},
 			{"39", " &-3"},
 			{"57", " &5"},
+
+			{"372", "m7 sub-6"},		// minor 7th sub b6
+			{"741", "mmaj7 sub-3"},	// minor major 7th sub b3
+			{"4125", "maj add4"},		// major
 
 			{"435", ""},		// major
 			{"435", "maj"},		// major
@@ -185,7 +189,7 @@ public:
 	string equiv() const {
 		std::vector<uint8_t> g = gaps();
 		for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
-			if ( g.size() != CHORD_NAMES[cnum].intervals.size() )
+			if ( g.size() != strlen(CHORD_NAMES[cnum].intervals) )
 				continue;
 			for(unsigned i = 0; i < g.size(); ++i) {
 				unsigned j;
@@ -194,7 +198,7 @@ public:
 						break;
 				}
 				if ( j == g.size() )
-					return Event::notename(_notes[i]) + CHORD_NAMES[cnum].name;
+					return Event::notename(_notes[i]) + string(CHORD_NAMES[cnum].name);
 			}
 		}
 		return "";
