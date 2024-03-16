@@ -7,14 +7,15 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cctype>
-
+#include <cinttypes>
 #include "smf.h"
 
 using namespace std;
 using namespace smf;
 
 class Chord {
-	std::vector<int> _notes;
+	uint8_t root; 	// the note number of the root note.
+	std::vector<uint8_t> intervals;
 	bitset<12> signature;
 
 private:
@@ -33,44 +34,49 @@ private:
 
 public:
 	constexpr static struct chord_name {
-		const char intervals[8], name[16];
+		const uint8_t intervals[8];
+		const char name[16];
 	} CHORD_NAMES[]	= {
-			{"0", " &oct"}, 	// octave uniｓon
-			{"48", " &3"},
-			{"2a", " &-2"},
-			{"39", " &-3"},
-			{"57", " &5"},
-
-			{"372", "m7 sub-6"},		// minor 7th sub b6
-			{"741", "mmaj7 sub-3"},	// minor major 7th sub b3
-			{"4125", "maj add4"},		// major
-
-			{"435", ""},		// major
-			{"435", "maj"},		// major
-			{"345", "m"},		// Minor
-			{"4332", "7"},	// 7th
-			{"4341", "maj7"},	// major 7th Δ7
-			{"3432", "m7"},		// minor 7th
-			{"3441", "mmaj7"},	// minor major 7th
-			{"4323", "6"},	// 6th
-			{"3423", "m6"},		// minor 6th
-			{"22332", "9"},	// 9th
-			{"22341", "maj9"},	// major 9th
-			{"21432", "m9"},	// minor 9th
-			{"22323", "6/9"},	// 6 9th
-			{"21423", "m6/9"},	// minor 6 9th
-			{"525", "sus4"},	// sus4, sus
-			{"5232", "7sus4"},	// 7th sus4
-			{"336", "dim"},		// dim, diminished, 〇
-			{"3333", "dim7"},	// diminished 7
-			{"444", "aug"},		// aug, +
-			{"4422", "aug7"},	// aug7
-			{"2235", "add9"},	// add9
-			{"4422", "7+5"},	// 7th #5 (tension)
-			{"4242", "7-5"},	// 7th b5
-			{"3342", "m7-5"},	// minor 7th b5
-			{"31332", "7(#9)"},	// 7th #9
-			{"13332", "7(b9)"},	// 7th b9
+			/*
+			{ {12}, " &oct"}, 	// octave uniｓon
+			{ {4}, " &3"},
+			{ {2}, " &-2"},
+			{ {3}, " &-3"},
+			{ {5}, " &5"},
+			{ {3, 7}, "m7 sub-6"},		// minor 7th sub b6
+			{ {4, 1, 2}, "maj add4"},		// major
+			{ {7, 4}, "mmaj7 sub-3"},	// minor major 7th sub b3
+			 */
+			{ {2, 5}, "sus2"},	// sus4, sus
+			{ {3, 3}, "dim"},		// dim, diminished, 〇
+			{ {3, 3, 3}, "dim7"},	// diminished 7, dim7
+			{ {3, 3, 4}, "m7-5"},	// minor 7th b5, m7b5
+			{ {3, 4}, "m"},		// Minor
+			{ {3, 4, 2}, "m6"},		// minor 6th
+			{ {3, 4, 2, 5}, "m6/9"},	// minor 6 9th
+			{ {3, 4, 3}, "m7"},		// minor 7th
+			{ {3, 4, 3, 4}, "m9"},	// minor 9th
+			{ {3, 4, 3, 4, 3}, "m11"}, // m11
+			{ {3, 4, 3, 4, 3, 4}, "m13"}, // m13
+			{ {3, 4, 4}, "mmaj7"},	// minor major 7th
+			{ {4, 2, 4}, "7-5"},	// 7th b5, 7-5
+			{ {4, 3}, ""},		// major
+			{ {4, 3, 2}, "6"},	// 6th
+			{ {4, 3, 2, 5}, "6/9"},	// 6 9th
+			{ {4, 3, 3}, "7"},	// dominant 7th
+			{ {4, 3, 3, 4}, "9"},	// dom. 9th
+			{ {4, 3, 3, 4, 3}, "11"}, // 11
+			{ {4, 3, 3, 4, 3, 4}, "13"}, // 13
+			{ {4, 3, 4}, "maj7"},	// major 7th Δ7
+			{ {4, 3, 4, 3}, "maj9"},	// major 9th
+			{ {4, 3, 4, 3, 3}, "maj11"}, // maj11
+			{ {4, 3, 4, 3, 3, 4}, "maj13"}, // maj13
+			{ {4, 3, 7}, "add9"},	// add9, add2
+			{ {4, 4}, "aug"},		// aug, +
+			{ {4, 4, 2}, "aug7"},	// aug7, 7+5
+			{ {4, 4, 2}, "7+5"},	// 7th #5 (tension)
+			{ {5, 2}, "sus4"},	// sus4, sus
+			{ {5, 2, 3}, "7sus4"},	// 7th sus4
 
 	};
 
@@ -90,19 +96,41 @@ public:
 		MINAUG,
 	};
 */
-public:
-	Chord(const std::vector<uint8_t> & midinotes) {
-		for(const auto & note: midinotes) {
-			_notes.push_back(note);
+private:
+
+	Chord & set_by_intervals(const uint8_t rootnote, const uint8_t vals[]) {
+		//cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
+		root = rootnote;
+		intervals.clear();
+		uint8_t i, note;
+		for(i = 0, note = root; vals[i] != 0; ++i) {
 			signature.set(note % 12);
+			intervals.push_back(vals[i]);
+			note += vals[i];
 		}
-		std::sort(_notes.begin(), _notes.end());
+		return *this;
 	}
 
-	Chord(const uint8_t rootnote, const string & intervalstr) {
-		set(rootnote, intervalstr);
+public:
+	Chord(const std::vector<uint8_t> & midinotes) :
+		root(0), intervals(midinotes.begin(), midinotes.end()), signature(0) {
+		if ( intervals.empty() )
+			return;
+
+		std::sort(intervals.begin(), intervals.end());
+		root = intervals.front();
+		for(unsigned int i = 0; i < intervals.size(); ++i ) {
+			signature.set(intervals[i] % 12);
+			intervals[i] = intervals[i+1] - intervals[i];
+		}
+		intervals.pop_back();
 	}
 
+	Chord(const uint8_t rootnote, const uint8_t vals[]) {
+		set_by_intervals(rootnote, vals);
+	}
+
+	/*
 	Chord(const string & chordname) {
 		uint8_t root = 60;
 		unsigned int ix = 0;
@@ -150,29 +178,30 @@ public:
 				}
 			}
 		}
-		set(root, CHORD_NAMES[chord].intervals);
+		set_by_intervals(root, CHORD_NAMES[chord].intervals);
 	}
-
-	Chord & set(const uint8_t rootnote, const string & intervalstr) {
-		cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
-		_notes.push_back(rootnote);
-		signature.set(rootnote % 12);
-		for(unsigned int i = 0; i < intervalstr.length() - 1; ++i) {
-			uint8_t nextnote = _notes.back() + hexchar_to_uint(intervalstr[i]);
-			_notes.push_back(nextnote);
-			signature.set(nextnote % 12);
+*/
+	Chord & insert(const uint8_t note) {
+		uint8_t n = root;
+		if ( note <= root ) {
+			intervals.insert(intervals.begin(), uint8_t(root - note) );
+		} else {
+			uint8_t pos;
+			for(pos = 1; pos < intervals.size() + 1; ++pos) {
+				if ( note < n + intervals[pos - 1] ) {
+					pos = pos - 1;
+					break;
+				}
+				n += intervals[pos - 1];
+			}
+			intervals.insert(intervals.begin()+pos, note - n);
+			intervals[pos+1] = (intervals[n+1] - n) - (note - n);
 		}
 		return *this;
 	}
 
-	Chord & append(const uint8_t note) {
-		_notes.insert(std::upper_bound(_notes.begin(), _notes.end(), note), note);
-		signature.set(note % 12);
-		return *this;
-	}
-
-	const std::vector<int> & notes() const { return _notes; }
-
+	//const std::vector<int> & notes() const { return _notes; }
+/*
 	std::vector<uint8_t> gaps() const {
 		std::vector<uint8_t> g;
 		int base = _notes[0] % 12;
@@ -203,20 +232,24 @@ public:
 		}
 		return "";
 	}
+*/
 
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
 		bitset<12> elems(0ul);
 		out << "Chord[";
-		for(const auto & note : chord.notes()) {
-			if ( !elems[note % 12] ) {
-				out << Event::notename(note) <<Event::octave(note) << ", ";
+		uint8_t note = chord.root;
+		out << Event::notename(note) << Event::octave(note);
+		for(const auto & d : chord.intervals) {
+			note += d;
+			if ( ! elems[note % 12] ) {
+				out << ", " << smf::Event::notename(note) << smf::Event::octave(note);
 				elems.set(note%12);
 			} else {
-				out << "(" << Event::notename(note) <<Event::octave(note) << "), ";
+				out << ", (" << smf::Event::notename(note) << smf::Event::octave(note) << ")";
 			}
 		}
 		out << "] ";
-		out << chord.equiv();
+		// out << chord.equiv();
 		return out;
 	}
 
@@ -258,7 +291,7 @@ int main(int argc, char **argv) {
 	vector<vector<ScoreElement> > score = midi.channel_score();
 	cout << endl << "finished." << endl;
 
-	cout << Chord(60, "255") << ", " << Chord("A#sus4") << endl;
+	cout << Chord(60, {4,3}) << endl;
 	uint32_t gtime;
 	vector<unsigned int> chs({0, 1, 2, 3, 4, 5, 6, 7});
 	for(unsigned int & ch : chs) {
