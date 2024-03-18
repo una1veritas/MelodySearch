@@ -6,6 +6,7 @@
 #include <bitset>
 #include <algorithm>
 #include <stdexcept>
+#include <cstdlib>
 #include <cctype>
 #include <cinttypes>
 #include "smf.h"
@@ -19,6 +20,7 @@ class Chord {
 	bitset<12> signature;
 
 private:
+	/*
 	static uint8_t hexchar_to_uint(char c) {
 		c = toupper(c);
 		if (c < '0')
@@ -30,6 +32,12 @@ private:
 		if (c >= 'A')
 			return c - 'A' + 10;
 		return 0xff;
+	}
+*/
+	static std::bitset<12> rot(const std::bitset<12> & bset12, const int & count) {
+		unsigned int left = (count >= 0)? 12 - (count % 12) : ((-count) % 12);
+		// Limit count to range [0,N)
+		return (bset12 << left) | (bset12 >> (12 - left));
 	}
 
 public:
@@ -47,68 +55,59 @@ public:
 			{ {4, 1, 2}, "maj add4"},		// major
 			{ {7, 4}, "mmaj7 sub-3"},	// minor major 7th sub b3
 			 */
-			{ {2, 5}, "sus2"},	// sus4, sus
-			{ {3, 3}, "dim"},		// dim, diminished, 〇
-			{ {3, 3, 3}, "dim7"},	// diminished 7, dim7
-			{ {3, 3, 4}, "m7-5"},	// minor 7th b5, m7b5
-			{ {3, 4}, "m"},		// Minor
-			{ {3, 4, 2}, "m6"},		// minor 6th
-			{ {3, 4, 2, 5}, "m6/9"},	// minor 6 9th
-			{ {3, 4, 3}, "m7"},		// minor 7th
-			{ {3, 4, 3, 4}, "m9"},	// minor 9th
-			{ {3, 4, 3, 4, 3}, "m11"}, // m11
-			{ {3, 4, 3, 4, 3, 4}, "m13"}, // m13
-			{ {3, 4, 4}, "mmaj7"},	// minor major 7th
-			{ {4, 2, 4}, "7-5"},	// 7th b5, 7-5
-			{ {4, 3}, ""},		// major
-			{ {4, 3, 2}, "6"},	// 6th
-			{ {4, 3, 2, 5}, "6/9"},	// 6 9th
-			{ {4, 3, 3}, "7"},	// dominant 7th
-			{ {4, 3, 3, 4}, "9"},	// dom. 9th
-			{ {4, 3, 3, 4, 3}, "11"}, // 11
-			{ {4, 3, 3, 4, 3, 4}, "13"}, // 13
-			{ {4, 3, 4}, "maj7"},	// major 7th Δ7
-			{ {4, 3, 4, 3}, "maj9"},	// major 9th
-			{ {4, 3, 4, 3, 3}, "maj11"}, // maj11
-			{ {4, 3, 4, 3, 3, 4}, "maj13"}, // maj13
-			{ {4, 3, 7}, "add9"},	// add9, add2
-			{ {4, 4}, "aug"},		// aug, +
-			{ {4, 4, 2}, "aug7"},	// aug7, 7+5
-			{ {4, 4, 2}, "7+5"},	// 7th #5 (tension)
-			{ {5, 2}, "sus4"},	// sus4, sus
-			{ {5, 2, 3}, "7sus4"},	// 7th sus4
-
+			{ {2, 5},              "sus2"},
+			{ {3, 3},              "dim"}, // dim, diminished, 〇
+			{ {3, 3, 3},           "dim7"}, 	// diminished 7, dim7
+			{ {3, 3, 4},           "m7-5"}, // minor 7th b5, m7b5
+			{ {3, 4},              "m"},
+			{ {3, 4, 2},           "m6"},
+			{ {3, 4, 2, 5},        "m6/9"}, 	// minor 6 9th
+			{ {3, 4, 3},           "m7"},
+			{ {3, 4, 3, 4},        "m9"},
+			{ {3, 4, 3, 4, 3},     "m11"},
+			{ {3, 4, 3, 4, 3, 4},  "m13"},
+			{ {3, 4, 4},           "mmaj7"}, // minor major 7th
+			{ {4, 2, 4},           "7-5"},
+			{ {4, 3},              ""},  // major
+			{ {4, 3, 2},           "6"},
+			{ {4, 3, 2, 5},        "6/9"},
+			{ {4, 3, 3},           "7"}, 	// dominant 7th
+			{ {4, 3, 3, 4},        "9"},
+			{ {4, 3, 3, 4, 3},     "11"},
+			{ {4, 3, 3, 4, 3, 4},  "13"},
+			{ {4, 3, 4},           "maj7"}, 	// major 7th Δ7
+			{ {4, 3, 4, 3},        "maj9"},
+			{ {4, 3, 4, 3, 3},     "maj11"},
+			{ {4, 3, 4, 3, 3, 4},  "maj13"},
+			{ {4, 3, 7},           "add9"}, // add9, add2
+			{ {4, 4},              "aug"}, 		// aug, +
+			{ {4, 4, 2},           "aug7"}, 	// aug7, 7+5
+			{ {5, 2},              "sus4"},
+			{ {5, 2, 3},           "7sus4"},
 	};
 
-	/*
-	enum chords {
-		MAJ = 0,
-		MAJ6TH,
-		MAJ7TH,
-		MAJ7,
-		MAJ9TH,
-		MIN,
-		MIN7,
-		MIN7B5,
-		MINDIM,
-		MINDIM7,
-		MIN7SUS4,
-		MINAUG,
-	};
-*/
 private:
 
-	Chord & set_by_intervals(const uint8_t rootnote, const uint8_t vals[]) {
+	Chord & set_by_intervals(const uint8_t rootnote, const std::vector<uint8_t> & vals) {
 		//cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
 		root = rootnote;
 		intervals.clear();
-		uint8_t i, note;
-		for(i = 0, note = root; vals[i] != 0; ++i) {
-			signature.set(note % 12);
+		uint8_t note = root;
+		signature.set(note % 12);
+		for(uint8_t i = 0; i < vals.size(); ++i) {
+			if (vals[i] == 0)
+				continue;
 			intervals.push_back(vals[i]);
 			note += vals[i];
+			signature.set(note % 12);
 		}
 		return *this;
+	}
+
+	Chord & set_by_intervals(const uint8_t rootnote, const uint8_t vals[]) {
+		uint8_t len;
+		for(len = 0; vals[len] != 0; ++len) ;
+		return set_by_intervals(rootnote, std::vector<uint8_t>(vals, vals+len));
 	}
 
 public:
@@ -126,15 +125,13 @@ public:
 		intervals.pop_back();
 	}
 
-	Chord(const uint8_t rootnote, const uint8_t vals[]) {
-		set_by_intervals(rootnote, vals);
+	Chord(const uint8_t root, const std::vector<uint8_t> & vals) {
+		set_by_intervals(root, vals);
 	}
 
-	/*
 	Chord(const string & chordname) {
 		uint8_t root = 60;
-		unsigned int ix = 0;
-		switch(chordname[ix]) {
+		switch(chordname[0]) {
 		case 'C':
 			root = 60;
 			break;
@@ -157,9 +154,9 @@ public:
 			root = 71;
 			break;
 		}
-		uint8_t chord = 0;
+		unsigned int ix = 1;
+		uint8_t cid = 0;
 		if (chordname.length() >= 2) {
-			ix += 1;
 			if ( chordname[ix] == '#' ) {
 				root += 1;
 				ix += 1;
@@ -167,78 +164,103 @@ public:
 				root -= 1;
 				ix += 1;
 			}
-
 			if (ix < chordname.length() - 1) {
 				const string suffix(chordname, ix);
 				for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
 					if (suffix == CHORD_NAMES[cnum].name) {
-						chord = cnum;
+						cid = cnum;
 						break;
 					}
 				}
 			}
 		}
-		set_by_intervals(root, CHORD_NAMES[chord].intervals);
+		set_by_intervals(root, CHORD_NAMES[cid].intervals);
 	}
-*/
-	Chord & insert(const uint8_t note) {
-		uint8_t n = root;
-		if ( note <= root ) {
+
+	/*
+	Chord(const std::bitset<12> & sig) {
+		signature = sig;
+	}
+	*/
+	const std::bitset<12> & noteset() { return signature; }
+
+	Chord & add(const uint8_t note) {
+		uint8_t prevnote = root;
+		if ( note < root ) {
 			intervals.insert(intervals.begin(), uint8_t(root - note) );
-		} else {
-			uint8_t pos;
-			for(pos = 1; pos < intervals.size() + 1; ++pos) {
-				if ( note < n + intervals[pos - 1] ) {
-					pos = pos - 1;
+			root = note;
+			signature.set(root % 12);
+		} else if (root < note) {
+			uint8_t intvpos;
+			for(intvpos = 0; intvpos < intervals.size(); ++intvpos) {
+				if ( note <= prevnote + intervals[intvpos] ) {
 					break;
 				}
-				n += intervals[pos - 1];
+				prevnote += intervals[intvpos];
 			}
-			intervals.insert(intervals.begin()+pos, note - n);
-			intervals[pos+1] = (intervals[n+1] - n) - (note - n);
+			if ( note < prevnote + intervals[intvpos] ) {
+				intervals.insert(intervals.begin()+intvpos, note - prevnote);
+				intervals[intvpos+1] -= note - prevnote;
+			}
+			signature.set(note % 12);
 		}
 		return *this;
 	}
 
-	//const std::vector<int> & notes() const { return _notes; }
-/*
-	std::vector<uint8_t> gaps() const {
-		std::vector<uint8_t> g;
-		int base = _notes[0] % 12;
-		int prev = base;
-		for(int ix = 1; ix <= 12; ++ix) {
-			if ( signature[(base + ix) % 12] ) {
-				g.push_back( ((base + ix - prev) % 12)  );
-				prev = (base + ix) % 12;
+	Chord & inverted(int n) {
+		if ( std::abs(n) == intervals.size())
+			return *this;
+		uint8_t sum;
+		int i;
+		if (n < 0) {
+			for(i = n; i < 0; ++i) {
+				sum = 0;
+				for(const auto & d : intervals) {
+					sum += d;
+				}
+				for(uint8_t j = intervals.size(); j > 1; --j) {
+					intervals[j] = intervals[j-1];
+				}
+				intervals[0] = 12 - (sum % 12);
+				root -= intervals[0];
+			}
+		} else {
+			for(i = 0 ; i < n; ++i) {
+				sum = 0;
+				for(const auto & d : intervals) {
+					sum += d;
+				}
+				root += intervals[0];
+				for(uint8_t j = 1; j < intervals.size(); ++j) {
+					intervals[j-1] = intervals[j];
+				}
+				intervals[intervals.size() - 1] = 12 - (sum % 12);
 			}
 		}
-		return g;
+		return *this;
 	}
+	//const std::vector<int> & notes() const { return _notes; }
 
-	string equiv() const {
-		std::vector<uint8_t> g = gaps();
-		for(unsigned cnum = 0; cnum < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cnum) {
-			if ( g.size() != strlen(CHORD_NAMES[cnum].intervals) )
-				continue;
-			for(unsigned i = 0; i < g.size(); ++i) {
-				unsigned j;
-				for(j = 0; j < g.size(); ++j) {
-					if ( g[(i+j) % g.size()] != hexchar_to_uint(CHORD_NAMES[cnum].intervals[j]) )
-						break;
-				}
-				if ( j == g.size() )
-					return Event::notename(_notes[i]) + string(CHORD_NAMES[cnum].name);
+	string guess() const {
+		for(unsigned cid = 0; cid < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cid) {
+			unsigned int i;
+			for(i = 0; CHORD_NAMES[cid].intervals[i] != 0 and i < intervals.size(); ++i) {
+				if (CHORD_NAMES[cid].intervals[i] != intervals[i])
+					break;
 			}
+			if (CHORD_NAMES[cid].intervals[i] == 0 and i == intervals.size())
+				return string(CHORD_NAMES[cid].name);
 		}
 		return "";
 	}
-*/
+
 
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
 		bitset<12> elems(0ul);
 		out << "Chord[";
 		uint8_t note = chord.root;
 		out << Event::notename(note) << Event::octave(note);
+		elems.set(note % 12);
 		for(const auto & d : chord.intervals) {
 			note += d;
 			if ( ! elems[note % 12] ) {
@@ -249,7 +271,11 @@ public:
 			}
 		}
 		out << "] ";
-		// out << chord.equiv();
+		for(const auto & d : chord.intervals) {
+			out << int(d) << ", ";
+		}
+		//out << chord.signature << " " << chord.rot(chord.signature, 1);
+		//out << chord.guess();
 		return out;
 	}
 
@@ -291,9 +317,42 @@ int main(int argc, char **argv) {
 	vector<vector<ScoreElement> > score = midi.channel_score();
 	cout << endl << "finished." << endl;
 
-	cout << Chord(60, {4,3}) << endl;
+	Chord C(60, std::vector<uint8_t> {0, 4, 3});
+	cout << "test " << C << ", " << Chord("Am7sus4") << endl;
+	C.add(70);
+	cout << C << ", " << C.inverted(-2) << endl << endl;
+
+	for(unsigned cid = 0; cid < sizeof(Chord::CHORD_NAMES)/sizeof(Chord::chord_name); ++cid) {
+		std::vector<uint8_t> vals;
+		for(int i = 0; Chord::CHORD_NAMES[cid].intervals[i]; ++i) {
+			vals.push_back(Chord::CHORD_NAMES[cid].intervals[i]);
+		}
+		Chord C(60, vals);
+		cout << "\t{ ";
+		if (Chord::CHORD_NAMES[cid].intervals[0]) {
+			cout << "{" << int(Chord::CHORD_NAMES[cid].intervals[0]);
+			int i;
+			for(i = 1; Chord::CHORD_NAMES[cid].intervals[i]; ++i) {
+				cout << ", " << int(Chord::CHORD_NAMES[cid].intervals[i]);
+			}
+			cout << "}, ";
+			int c = 18 - i* 3;
+			while ( c > 0 ) {
+				cout << " ";
+				c -= 1;
+			}
+			cout << " ";
+		} else {
+			cout << "{ 0 }, ";
+		}
+		cout << "\"" << C.noteset() << "\", ";
+		cout << "\"" << Chord::CHORD_NAMES[cid].name << "\"" << "}, " << endl;
+	}
+	return EXIT_SUCCESS;
+
+
 	uint32_t gtime;
-	vector<unsigned int> chs({0, 1, 2, 3, 4, 5, 6, 7});
+	vector<unsigned int> chs({3, 4, 5, 6, 7});
 	for(unsigned int & ch : chs) {
 		gtime = 0;
 		if (!score[ch].size())
