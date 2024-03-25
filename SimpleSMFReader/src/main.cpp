@@ -61,32 +61,26 @@ int main(int argc, char **argv) {
 	cout << "test " << C << ", " << Chord("Am7sus4") << endl;
 	C.add(70);
 	cout << C << ", " << C.inverted(-2) << endl << endl;
-	cout << Chord("C6/9") << ", " << Chord("C#6/9") << ", " << Chord("D6/9") << ", "
-			<< Chord("G6/9") << endl << endl;
+	cout << Chord("Cm7") << ", " << Chord("C#6/9") << ", " << Chord("D7") << ", "
+			<< Chord("G7b5") << endl << endl;
 
+	/*
 	std::vector<Chord> chords;
 	for(unsigned cid = 0; cid < sizeof(Chord::CHORD_NAMES)/sizeof(Chord::chord_name); ++cid) {
-		//for(uint8_t root = 60; root < 60+12; ++root) {
-			Chord C(60, Chord::CHORD_NAMES[cid].intervals );
-			unsigned long mincode = C.note_bits().to_ulong();
-			Chord Cmininv = C;
-			for(unsigned int i = 0; i < C.size(); ++i ) {
-				Chord Cinv = C.inverted(i);
-				unsigned long code = rotright(Cinv.note_bits(), Cinv.root_note() % 12).to_ulong();
-				if ( code < mincode ) {
-					mincode = code;
-					Cmininv = Cinv;
-				}
-			}
-			chords.push_back(Cmininv);
-			//cout << Cmininv.note_bits() << " " << Cmininv << " " << C << " " << endl;
-		//}
+		Chord C(60, Chord::CHORD_NAMES[cid].intervals );
+		cout << "{ {";
+		for(int i = 0; i < C.size() - 1; ++i) {
+			if ( i )
+				cout << ", ";
+			cout << int(C.interval(i));
+		}
+		cout << "}, " << C.note_bits().to_ulong() << ", \"" << Chord::CHORD_NAMES[cid].name << "\"" << "}, " << endl;
 	}
 
 	std::sort(chords.begin(), chords.end(),
 	         [](Chord a, Chord b) {return a.note_bits().to_ulong() < b.note_bits().to_ulong(); });
 	for(const auto & c : chords) {
-		cout << c.note_bits() << " " << c << " ";
+		cout << c.note_bits().to_ulong() << " " << c << " ";
 		unsigned int sum = 0;
 
 		for(unsigned int i = 0; i < c.size() - 1; ++i) {
@@ -99,8 +93,9 @@ int main(int argc, char **argv) {
 	}
 
 	return EXIT_SUCCESS;
+	*/
 
-
+/*
 	uint32_t gtime;
 	vector<unsigned int> chs({3, 4, 5, 6, 7});
 	for(unsigned int & ch : chs) {
@@ -130,5 +125,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	cout << endl;
+
+	*/
 	return 0;
 }

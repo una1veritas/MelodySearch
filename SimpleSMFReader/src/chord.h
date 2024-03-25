@@ -19,7 +19,6 @@
 class Chord {
 	uint8_t root; 	// the note number of the root note.
 	std::vector<uint8_t> intervals;
-	std::bitset<12> notebits;
 
 private:
 	/*
@@ -41,7 +40,7 @@ private:
 		// Limit count to range [0,N)
 		return (bset12 << left) | (bset12 >> (12 - left));
 	}
-
+/*
 	static unsigned int count1s(const std::string & bits) {
 		uint8_t c = 0;
 		for(int i = 0; i < 256 and bits[i]; ++i) {
@@ -50,11 +49,10 @@ private:
 		}
 		return c;
 	}
-
+*/
 public:
 	constexpr static struct chord_name {
 		const uint8_t intervals[8];
-		const std::string signature;
 		const char name[16];
 	} CHORD_NAMES[]	= {
 			/*
@@ -67,71 +65,40 @@ public:
 			{ {4, 1, 2}, "maj add4"},		// major
 			{ {7, 4}, "mmaj7 sub-3"},	// minor major 7th sub b3
 			 */
-			{ {2, 5},              "000010000101", "sus2"},
-			{ {3, 3},              "000001001001", "dim"}, // dim, diminished, 〇
-			{ {3, 3, 3},           "001001001001", "dim7"},
-			{ {3, 3, 4},           "010001001001", "m7b5"},  // minor 7th b5, m7b5
-			{ {3, 4},              "000010001001", "m"},
-			{ {3, 4, 2},           "001010001001", "m6"},
-			{ {3, 4, 2, 5},        "001010001101", "m6/9"},  	// minor 6 9th
-			{ {3, 4, 3},           "010010001001", "m7"},
-			{ {3, 4, 3, 4},        "010010001101", "m9"},
-			{ {3, 4, 3, 4, 3},     "010010101101", "m11"},
-			{ {3, 4, 3, 4, 3, 4},  "011010101101", "m13"},
-			{ {3, 4, 4},           "100010001001", "mmaj7"},
-			{ {4, 2, 4},           "010001010001", "7b5"},
-			{ {4, 3},              "000010010001", ""},
-			{ {4, 3, 2},           "001010010001", "6"},
-			{ {4, 3, 2, 5},        "001010010101", "6/9"},
-			{ {4, 3, 3},           "010010010001", "7"}, 	// dominant 7th
-			{ {4, 3, 3, 4},        "010010010101", "9"},
-			{ {4, 3, 3, 4, 3},     "010010110101", "11"},
-			{ {4, 3, 3, 4, 3, 4},  "011010110101", "13"},
-			{ {4, 3, 4},           "100010010001", "maj7"},  	// major 7th, maj Δ7
-			{ {4, 3, 4, 3},        "100010010101", "maj9"},
-			{ {4, 3, 4, 3, 3},     "100010110101", "maj11"},
-			{ {4, 3, 4, 3, 3, 4},  "101010110101", "maj13"},
-			{ {4, 3, 7},           "000010010101", "add9"}, 	// add2
-			{ {4, 4},              "000100010001", "aug"},
-			{ {4, 4, 2},           "010100010001", "aug7"},  	// aug7, 7+5
-			{ {5, 2},              "000010100001", "sus4"},
-			{ {5, 2, 3},           "010010100001", "7sus4"}, 	// = m7sus4
-			{ {5, 2, 3},           "010010100001", "m7sus4"}, 	// m7sus4
-			{ {5, 2, 4},           "100010010001", "maj7"},  	// major 7th sus 4
-/*
-			{ {2, 5},              "sus2"},
-			{ {3, 3},              "dim"}, // dim, diminished, 〇
-			{ {3, 3, 3},           "dim7"}, 	// diminished 7, dim7
-			{ {3, 3, 4},           "m7-5"}, // minor 7th b5, m7b5
-			{ {3, 4},              "m"},
-			{ {3, 4, 2},           "m6"},
-			{ {3, 4, 2, 5},        "m6/9"}, 	// minor 6 9th
-			{ {3, 4, 3},           "m7"},
-			{ {3, 4, 3, 4},        "m9"},
-			{ {3, 4, 3, 4, 3},     "m11"},
-			{ {3, 4, 3, 4, 3, 4},  "m13"},
-			{ {3, 4, 4},           "mmaj7"}, // minor major 7th
-			{ {4, 2, 4},           "7-5"},
-			{ {4, 3},              ""},  // major
-			{ {4, 3, 2},           "6"},
-			{ {4, 3, 2, 5},        "6/9"},
-			{ {4, 3, 3},           "7"}, 	// dominant 7th
-			{ {4, 3, 3, 4},        "9"},
-			{ {4, 3, 3, 4, 3},     "11"},
-			{ {4, 3, 3, 4, 3, 4},  "13"},
-			{ {4, 3, 4},           "maj7"}, 	// major 7th Δ7
-			{ {4, 3, 4, 3},        "maj9"},
-			{ {4, 3, 4, 3, 3},     "maj11"},
-			{ {4, 3, 4, 3, 3, 4},  "maj13"},
-			{ {4, 3, 7},           "add9"}, // add9, add2
-			{ {4, 4},              "aug"}, 		// aug, +
-			{ {4, 4, 2},           "aug7"}, 	// aug7, 7+5
-			{ {5, 2},              "sus4"},
-			{ {5, 2, 3},           "7sus4"},
-			*/
+			{ {2, 5}, 		"sus2"},
+			{ {3, 3}, 		"dim"},  // dim, diminished, 〇
+			{ {3, 3, 3}, 	"dim7"},
+			{ {3, 3, 4}, 	"m7b5"},  // minor 7th b5, m7b5
+			{ {3, 4}, 		"m"},
+			{ {3, 4, 2}, 	"m6"},
+			{ {3, 4, 2, 5}, "m6/9"},  	// minor 6 9th
+			{ {3, 4, 3}, 	"m7"},
+			{ {3, 4, 3, 4}, "m9"},
+			{ {3, 4, 3, 4, 3}, "m11"},
+			{ {3, 4, 3, 4, 3, 4}, "m13"},
+			{ {3, 4, 4}, 	"mmaj7"},
+			{ {4, 2, 4}, 	"7b5"},
+			{ {4, 3}, 		""}, 	// major
+			{ {4, 3, 2}, 	"6"},
+			{ {4, 3, 2, 5}, "6/9"},
+			{ {4, 3, 3}, 	"7"}, 	// dominant 7th
+			{ {4, 3, 3, 4}, "9"},
+			{ {4, 3, 3, 4, 3}, "11"},
+			{ {4, 3, 3, 4, 3, 4}, "13"},
+			{ {4, 3, 4}, 	"maj7"},  	// major 7th, maj Δ7
+			{ {4, 3, 4, 3}, "maj9"},
+			{ {4, 3, 4, 3, 3}, "maj11"},
+			{ {4, 3, 4, 3, 3, 4}, "maj13"},
+			{ {4, 3, 7}, 	"add9"}, 	// add2
+			{ {4, 4}, 		"aug"},
+			{ {4, 4, 2}, 	"aug7"},  	// aug7, 7+5
+			{ {5, 2}, 		"sus4"},
+			{ {5, 2, 3}, 	"7sus4"}, 	// = m7sus4
+			{ {5, 2, 3}, 	"m7sus4"},
+			{ {5, 2, 4}, 	"maj7"},  	// major 7th sus 4
 	};
 
-	constexpr static std::string KEYNAMES[] = {
+	constexpr static char KEYNAMES[][4] = {
 			"C",
 			"C#",
 			"D",
@@ -152,14 +119,10 @@ private:
 		//cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
 		root = rootnote;
 		intervals.clear();
-		uint8_t note = root;
-		notebits.set(note % 12);
 		for(uint8_t i = 0; i < vals.size(); ++i) {
 			if (vals[i] == 0)
 				continue;
 			intervals.push_back(vals[i]);
-			note += vals[i];
-			notebits.set(note % 12);
 		}
 		return *this;
 	}
@@ -172,14 +135,13 @@ private:
 
 public:
 	Chord(const std::vector<uint8_t> & midinotes) :
-		root(0), intervals(midinotes.begin(), midinotes.end()), notebits(0) {
+		root(0), intervals(midinotes.begin(), midinotes.end()) {
 		if ( intervals.empty() )
 			return;
 
 		std::sort(intervals.begin(), intervals.end());
 		root = intervals.front();
 		for(unsigned int i = 0; i < intervals.size(); ++i ) {
-			notebits.set(intervals[i] % 12);
 			intervals[i] = intervals[i+1] - intervals[i];
 		}
 		intervals.pop_back();
@@ -244,13 +206,11 @@ public:
 	}
 
 	// inverted copy
-	Chord(const Chord & chord, int n)
-	: root(chord.root), intervals(chord.intervals), notebits(chord.notebits) {
+	Chord(const Chord & chord, int n) : root(chord.root), intervals(chord.intervals) {
 		invert(n);
 	}
 
 	const unsigned int root_note() const { return root; }
-	const std::bitset<12> & note_bits() const { return notebits; }
 	const unsigned int size() const { return 1 + intervals.size(); }
 	const unsigned int interval(uint8_t i) const {
 		/*
@@ -266,7 +226,16 @@ public:
 		*/
 		return intervals[i];
 	}
-	const std::string notebitstr() const { return notebits.to_string(); }
+	const std::bitset<12> note_bits() const {
+		std::bitset<12> bits(0);
+		uint8_t note = root;
+		bits.set(note % 12);
+		for(int i = 0; i < size() - 1; ++i) {
+			note += interval(i);
+			bits.set(note % 12);
+		}
+		return bits;
+	}
 
 	// inverted version
 	Chord inverted(int n) const { return Chord(*this, n); }
@@ -310,7 +279,6 @@ public:
 		if ( note < root ) {
 			intervals.insert(intervals.begin(), uint8_t(root - note) );
 			root = note;
-			notebits.set(root % 12);
 		} else if (root < note) {
 			uint8_t intvpos;
 			for(intvpos = 0; intvpos < intervals.size(); ++intvpos) {
@@ -323,23 +291,27 @@ public:
 				intervals.insert(intervals.begin()+intvpos, note - prevnote);
 				intervals[intvpos+1] -= note - prevnote;
 			}
-			notebits.set(note % 12);
 		}
 		return *this;
 	}
 
+	unsigned long signature() const {
+		Chord chord_inverted(*this);
+		unsigned long sigval = note_bits().to_ulong();
+		for(int i = 0; i < size(); ++i) {
+			chord_inverted.invert(1);
+			unsigned long t = chord_inverted.note_bits().to_ulong();
+			if ( t < sigval )
+				sigval = t;
+		}
+		return sigval;
+	}
 	std::string guess() const {
-		uint8_t sigcount = notebits.count();
+		unsigned int selfsig = signature();
 		for(unsigned cid = 0; cid < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cid) {
-			std::bitset<12> bits(CHORD_NAMES[cid].signature);
-			if (sigcount != bits.count())
-				continue;
-			unsigned int i;
-			for(i = 0; i < 12; ++i) {
-				if (rotleft(bits, i) == notebits) {
-					return std::string(KEYNAMES[i]) + std::string(CHORD_NAMES[cid].name);
-				}
-			}
+			unsigned long sig = Chord(root, CHORD_NAMES[cid].intervals).signature();
+			if ( sig == selfsig )
+				return std::string(CHORD_NAMES[cid].name);
 		}
 		return "";
 	}
