@@ -17,30 +17,16 @@
 #include "smf.h"
 
 class Chord {
-	uint8_t root; 	// the note number of the root note.
-	std::vector<uint8_t> intervals;
+	std::vector<uint8_t> ordered_notes;
 
 private:
 	/*
-	static uint8_t hexchar_to_uint(char c) {
-		c = toupper(c);
-		if (c < '0')
-			return 0xff;
-		if (c > 'F')
-			return 0xff;
-		if (c <= '9')
-			return c - '0';
-		if (c >= 'A')
-			return c - 'A' + 10;
-		return 0xff;
-	}
-*/
 	static std::bitset<12> rotleft(const std::bitset<12> & bset12, const int & count) {
 		unsigned int left = (count >= 0)? (count % 12) : (12 - (count % 12));
 		// Limit count to range [0,N)
 		return (bset12 << left) | (bset12 >> (12 - left));
 	}
-/*
+
 	static unsigned int count1s(const std::string & bits) {
 		uint8_t c = 0;
 		for(int i = 0; i < 256 and bits[i]; ++i) {
@@ -117,37 +103,36 @@ private:
 
 	Chord & set_by_intervals(const uint8_t rootnote, const std::vector<uint8_t> & vals) {
 		//cout << "set: " << int(rootnote) << ", " << intervalstr << endl;
-		root = rootnote;
-		intervals.clear();
+		ordered_notes.push_back(rootnote);
 		for(uint8_t i = 0; i < vals.size(); ++i) {
 			if (vals[i] == 0)
 				continue;
-			intervals.push_back(vals[i]);
+			ordered_notes.push_back(ordered_notes.back()+vals[i]);
 		}
 		return *this;
 	}
 
 	Chord & set_by_intervals(const uint8_t rootnote, const uint8_t vals[]) {
-		uint8_t len;
-		for(len = 0; vals[len] != 0; ++len) ;
-		return set_by_intervals(rootnote, std::vector<uint8_t>(vals, vals+len));
+		ordered_notes.push_back(rootnote);
+		for(uint8_t i = 0; vals[i] != 0; ++i) {
+			ordered_notes.push_back(ordered_notes.back()+vals[i]);
+		}
+		return *this;
 	}
 
 public:
 	Chord(const std::vector<uint8_t> & midinotes) :
-		root(0), intervals(midinotes.begin(), midinotes.end()) {
-		if ( intervals.empty() )
+		ordered_notes(midinotes.begin(), midinotes.end()) {
+		if ( midinotes.empty() )
 			return;
-
-		std::sort(intervals.begin(), intervals.end());
-		root = intervals.front();
-		for(unsigned int i = 0; i < intervals.size(); ++i ) {
-			intervals[i] = intervals[i+1] - intervals[i];
+		std::sort(ordered_notes.begin(), ordered_notes.end());
+		for(auto itr = ordered_notes.begin() + 1; itr != ordered_notes.end(); ++itr) {
+			if ( *(itr - 1) == *itr )
+				ordered_notes.erase(itr);
 		}
-		intervals.pop_back();
 	}
 
-	Chord(const uint8_t root, const std::vector<uint8_t> & vals) {
+	Chord(const uint8_t root, const std::vector<uint8_t> & vals) : ordered_notes() {
 		set_by_intervals(root, vals);
 	}
 
@@ -205,40 +190,25 @@ public:
 		set_by_intervals(root, CHORD_NAMES[cid].intervals);
 	}
 
-	// inverted copy
-	Chord(const Chord & chord, int n) : root(chord.root), intervals(chord.intervals) {
-		invert(n);
-	}
+	// copy
+	Chord(const Chord & chord) : ordered_notes(chord.ordered_notes) { }
 
-	const unsigned int root_note() const { return root; }
-	const unsigned int size() const { return 1 + intervals.size(); }
+	const unsigned int root() const { return ordered_notes.front(); }
+	const unsigned int size() const { return ordered_notes.size(); }
 	const unsigned int interval(uint8_t i) const {
-		/*
-		i = i % size();
-		if ( i == size() - 1) {
-			int sum = 0;
-			for(const auto & g : intervals) {
-				sum += g;
-			}
-			sum %= 12;
-			return 12 - sum;
+		if (0 < i and i < ordered_notes.size()) {
+			return ordered_notes[i] - ordered_notes[i-1];
 		}
-		*/
-		return intervals[i];
+		return 0;
 	}
 	const std::bitset<12> note_bits() const {
 		std::bitset<12> bits(0);
-		uint8_t note = root;
-		bits.set(note % 12);
-		for(int i = 0; i < size() - 1; ++i) {
-			note += interval(i);
-			bits.set(note % 12);
+		for(unsigned int i = 0; i < size(); ++i) {
+			bits.set(ordered_notes[i] % 12);
 		}
 		return bits;
 	}
 
-	// inverted version
-	Chord inverted(int n) const { return Chord(*this, n); }
 	// invert the self
 	Chord & invert(int n) {
 		n %= int(size());
