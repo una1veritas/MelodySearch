@@ -138,7 +138,7 @@ public:
 
 	Chord(const uint8_t root, const uint8_t vals[]) {
 		const uint8_t * endptr;
-		for(endptr = vals; *endptr != 0; ++endptr) {}
+		for(endptr = vals; *endptr != 0; ++endptr) { }
 		set_by_intervals(root, std::vector<uint8_t>(vals, endptr));
 	}
 
@@ -211,39 +211,26 @@ public:
 
 	// invert the self
 	Chord & invert(int n) {
-		n %= int(size());
 		if (n == 0)
 			return *this;
 
 		uint8_t sum;
+		uint8_t octvs = n / size();
 		if (n > 0) {
-			for(int i = 0 ; i < n; ++i) {
-				sum = 0;
-				for(const auto & d : intervals) {
-					sum += d;
-				}
-				root += intervals[0];
-				for(uint8_t j = 1; j < intervals.size(); ++j) {
-					intervals[j-1] = intervals[j];
-				}
-				intervals[intervals.size() - 1] = 12 - (sum % 12);
+			for(int i = 0 ; i < size(); ++i) {
+				ordered_notes[i] += octvs * 12;
 			}
+			std::rotate(ordered_notes.begin(), ordered_notes.begin() + (n % size()), ordered_notes.end());
 		} else {
 			for(int i = n ; i < 0; ++i) {
-				sum = 0;
-				for(const auto & d : intervals) {
-					sum += d;
-				}
-				for(uint8_t j = 1; j < intervals.size(); ++j) {
-					intervals[j] = intervals[j-1];
-				}
-				intervals[0] = 12 - (sum % 12);
-				root -= intervals[0];
+				ordered_notes[i] += (octvs + 1) * 12;
+				std::rotate(ordered_notes.begin(), ordered_notes.begin() + (12 + (n % size())), ordered_notes.end());
 			}
 		}
 		return *this;
 	}
 
+	/*
 	Chord & add(const uint8_t note) {
 		uint8_t prevnote = root;
 		if ( note < root ) {
@@ -285,13 +272,10 @@ public:
 		}
 		return "";
 	}
-
+*/
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
 		std::bitset<12> elems(0ul);
 		out << "Chord[";
-		uint8_t note = chord.root;
-		out << smf::Event::notename(note) << smf::Event::octave(note);
-		elems.set(note % 12);
 		for(const auto & d : chord.intervals) {
 			note += d;
 			if ( ! elems[note % 12] ) {
@@ -308,7 +292,7 @@ public:
 		}
 		out << chord.signature;
 		*/
-		out << chord.guess();
+		//out << chord.guess();
 		return out;
 	}
 
