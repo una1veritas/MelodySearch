@@ -201,6 +201,7 @@ public:
 		}
 		return 0;
 	}
+	/*
 	const std::bitset<12> note_bits() const {
 		std::bitset<12> bits(0);
 		for(unsigned int i = 0; i < size(); ++i) {
@@ -208,21 +209,21 @@ public:
 		}
 		return bits;
 	}
+	*/
 
 	// invert the self
 	Chord & invert(int n) {
 		if (n == 0)
 			return *this;
 
-		uint8_t sum;
 		uint8_t octvs = n / size();
 		if (n > 0) {
-			for(int i = 0 ; i < size(); ++i) {
+			for(unsigned int i = 0 ; i < size(); ++i) {
 				ordered_notes[i] += octvs * 12;
 			}
 			std::rotate(ordered_notes.begin(), ordered_notes.begin() + (n % size()), ordered_notes.end());
 		} else {
-			for(int i = n ; i < 0; ++i) {
+			for(unsigned int i = n ; i < 0; ++i) {
 				ordered_notes[i] += (octvs + 1) * 12;
 				std::rotate(ordered_notes.begin(), ordered_notes.begin() + (12 + (n % size())), ordered_notes.end());
 			}
@@ -230,28 +231,24 @@ public:
 		return *this;
 	}
 
-	/*
+	Chord inverted(int n) {
+		Chord chord(*this);
+		chord.invert(n);
+		return chord;
+	}
+
 	Chord & add(const uint8_t note) {
-		uint8_t prevnote = root;
-		if ( note < root ) {
-			intervals.insert(intervals.begin(), uint8_t(root - note) );
-			root = note;
-		} else if (root < note) {
-			uint8_t intvpos;
-			for(intvpos = 0; intvpos < intervals.size(); ++intvpos) {
-				if ( note <= prevnote + intervals[intvpos] ) {
-					break;
-				}
-				prevnote += intervals[intvpos];
-			}
-			if ( note < prevnote + intervals[intvpos] ) {
-				intervals.insert(intervals.begin()+intvpos, note - prevnote);
-				intervals[intvpos+1] -= note - prevnote;
-			}
+		if ( note < root() ) {
+			ordered_notes.insert(ordered_notes.begin(), note);
+		} else if (root() < note) {
+			unsigned int pos = 0;
+			for(;ordered_notes[pos] <= note;++pos);
+			if (ordered_notes[pos] != note)
+				ordered_notes.insert(ordered_notes.begin() + pos, note);
 		}
 		return *this;
 	}
-
+/*
 	unsigned long signature() const {
 		Chord chord_inverted(*this);
 		unsigned long sigval = note_bits().to_ulong();
@@ -276,8 +273,7 @@ public:
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
 		std::bitset<12> elems(0ul);
 		out << "Chord[";
-		for(const auto & d : chord.intervals) {
-			note += d;
+		for(const auto & note : chord.ordered_notes) {
 			if ( ! elems[note % 12] ) {
 				out << ", " << smf::Event::notename(note) << smf::Event::octave(note);
 				elems.set(note%12);
