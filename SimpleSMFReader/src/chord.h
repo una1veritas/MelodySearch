@@ -201,15 +201,14 @@ public:
 		}
 		return 0;
 	}
-	/*
-	const std::bitset<12> note_bits() const {
+
+	const std::bitset<12> note_bitset() const {
 		std::bitset<12> bits(0);
 		for(unsigned int i = 0; i < size(); ++i) {
 			bits.set(ordered_notes[i] % 12);
 		}
 		return bits;
 	}
-	*/
 
 	// invert the self
 	Chord & invert(int n) {
@@ -238,28 +237,26 @@ public:
 	}
 
 	Chord & add(const uint8_t note) {
-		if ( note < root() ) {
-			ordered_notes.insert(ordered_notes.begin(), note);
-		} else if (root() < note) {
-			unsigned int pos = 0;
-			for(;ordered_notes[pos] <= note;++pos);
-			if (ordered_notes[pos] != note)
-				ordered_notes.insert(ordered_notes.begin() + pos, note);
-		}
+		auto itr = std::lower_bound(ordered_notes.begin(), ordered_notes.end(), note);
+		if ( *itr == note )
+			return *this;
+		ordered_notes.insert(itr, note);
 		return *this;
 	}
-/*
+
 	unsigned long signature() const {
 		Chord chord_inverted(*this);
-		unsigned long sigval = note_bits().to_ulong();
+		unsigned long sigval = note_bitset().to_ulong();
 		for(int i = 0; i < size(); ++i) {
 			chord_inverted.invert(1);
-			unsigned long t = chord_inverted.note_bits().to_ulong();
+			unsigned long t = chord_inverted.note_bitset().to_ulong();
 			if ( t < sigval )
 				sigval = t;
 		}
 		return sigval;
 	}
+
+	/*
 	std::string guess() const {
 		unsigned int selfsig = signature();
 		for(unsigned cid = 0; cid < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cid) {
@@ -274,12 +271,11 @@ public:
 		std::bitset<12> elems(0ul);
 		out << "Chord[";
 		for(const auto & note : chord.ordered_notes) {
-			if ( ! elems[note % 12] ) {
-				out << ", " << smf::Event::notename(note) << smf::Event::octave(note);
-				elems.set(note%12);
-			} else {
-				out << ", (" << smf::Event::notename(note) << smf::Event::octave(note) << ")";
+			if ( elems.any() ) {
+				out << ", ";
 			}
+			out << smf::Event::notename(note) << smf::Event::octave(note);
+			elems.set(note%12);
 		}
 		out << "] ";
 		/*

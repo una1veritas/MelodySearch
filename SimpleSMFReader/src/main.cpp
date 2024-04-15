@@ -58,10 +58,10 @@ int main(int argc, char **argv) {
 	cout << endl << "finished." << endl;
 
 	Chord C(60, std::vector<uint8_t> {0, 4, 3});
-	cout << "test " << C << ", " << Chord("Am7sus4") << endl;
+	cout << "C = " << C << ", Am7sus4 = " << Chord("Am7sus4") << endl;
 	C.add(70);
-	cout << C << ", " << C.inverted(-2) << endl << endl;
-	cout << Chord("Cm7") << ", " << Chord("C#6/9") << ", " << Chord("D7") << ", "
+	cout << "C = " << C << ", inverted -2 = " << C.inverted(-2) << endl << endl;
+	cout << "Cm7 = " << Chord("Cm7") << ", " << Chord("C#6/9") << ", " << Chord("D7") << ", "
 			<< Chord("G7b5") << endl << endl;
 
 	/*
