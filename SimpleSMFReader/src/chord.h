@@ -13,6 +13,7 @@
 #include <bitset>
 
 #include <cinttypes>
+#include <limits>
 
 #include "smf.h"
 
@@ -20,22 +21,32 @@ class Chord {
 	std::vector<uint8_t> ordered_notes;
 
 private:
-	/*
-	static std::bitset<12> rotleft(const std::bitset<12> & bset12, const int & count) {
-		unsigned int left = (count >= 0)? (count % 12) : (12 - (count % 12));
-		// Limit count to range [0,N)
-		return (bset12 << left) | (bset12 >> (12 - left));
+
+	static std::bitset<12> rotate12(std::bitset<12> & bset12, const int & count) {
+		if (count > 0)
+			return rotleft12(bset12, count);
+		else if (count < 0)
+			return rotright12(bset12, -count);
+		return bset12;
 	}
 
-	static unsigned int count1s(const std::string & bits) {
-		uint8_t c = 0;
-		for(int i = 0; i < 256 and bits[i]; ++i) {
-			if ( bits[i] == '1' )
-				++c;
-		}
-		return c;
+	static std::bitset<12> rotleft12(std::bitset<12> & bset12, unsigned int count) {
+		count = count % 12;
+		// Limit count to range [0,N)
+		return (bset12 << count) | (bset12 >> (12 - count));
 	}
-*/
+
+	static std::bitset<12> rotright12(std::bitset<12> & bset12, unsigned int count) {
+		count = count % 12;
+		return (bset12 >> count) | (bset12 << (12 - count));
+	}
+
+	static unsigned int ctz12(std::bitset<12> & bset12) {
+		if ( bset12.none() )
+			return 0;
+		return static_cast<unsigned int>(std::countr_zero(bset12.to_ulong()));
+	}
+
 public:
 	constexpr static struct chord_name {
 		const uint8_t intervals[8];
@@ -194,6 +205,7 @@ public:
 	Chord(const Chord & chord) : ordered_notes(chord.ordered_notes) { }
 
 	const unsigned int root() const { return ordered_notes.front(); }
+	const unsigned int note(const unsigned int & i) const { return ordered_notes[i % size()]; }
 	const unsigned int size() const { return ordered_notes.size(); }
 	const unsigned int interval(uint8_t i) const {
 		if (0 < i and i < ordered_notes.size()) {
@@ -215,22 +227,29 @@ public:
 		if (n == 0)
 			return *this;
 
-		uint8_t octvs = n / size();
 		if (n > 0) {
-			for(unsigned int i = 0 ; i < size(); ++i) {
-				ordered_notes[i] += octvs * 12;
+			unsigned int octshift = n / size(); // the both operands must be signed.
+			for(unsigned int i = 0 ; i < static_cast<unsigned int>(n); ++i) {
+				ordered_notes[i] += (octshift + 1) * 12;
+			}
+			for(unsigned int i = n ; i < size(); ++i) {
+				ordered_notes[i] += octshift * 12;
 			}
 			std::rotate(ordered_notes.begin(), ordered_notes.begin() + (n % size()), ordered_notes.end());
 		} else {
-			for(unsigned int i = n ; i < 0; ++i) {
-				ordered_notes[i] += (octvs + 1) * 12;
-				std::rotate(ordered_notes.begin(), ordered_notes.begin() + (12 + (n % size())), ordered_notes.end());
+			unsigned int octshift = std::abs(n) / size(); // the both operands must be signed.
+			//std::cout << " neg " << n << " " << "loops = " << loops << " (12 + n % int(size() " << (12 + (n % int(size()))) << std::endl;
+			for(unsigned int i = 0 ; i < size(); ++i) {
+				ordered_notes[i] += (octshift - 1) * 12;
 			}
+			// negative % singed
+			//std::cout << *this << std::endl;
+			std::rotate(ordered_notes.begin(), ordered_notes.begin() + (size() + (n % int(size()))), ordered_notes.end());
 		}
 		return *this;
 	}
 
-	Chord inverted(int n) {
+	Chord inverted(int n) const {
 		Chord chord(*this);
 		chord.invert(n);
 		return chord;
@@ -253,20 +272,35 @@ public:
 			if ( t < sigval )
 				sigval = t;
 		}
-		return sigval;
+		unsigned long sig = minbits.to_ulong();
+		uint8_t root = ordered_notes[t] % 12;
+		return (sig << root);
 	}
 
 	/*
 	std::string guess() const {
 		unsigned int selfsig = signature();
+public:
+	std::bitset<12> notebits() const {
+		std::bitset<12> bits;
+		for(const auto & note: ordered_notes) {
+			bits.set(int(note) % 12);
+		}
+		return bits;
+	}
+*/
+	std::string name() const {
+		unsigned long selfsig = signature();
 		for(unsigned cid = 0; cid < sizeof(CHORD_NAMES)/sizeof(chord_name); ++cid) {
-			unsigned long sig = Chord(root, CHORD_NAMES[cid].intervals).signature();
-			if ( sig == selfsig )
-				return std::string(CHORD_NAMES[cid].name);
+			unsigned long chordsig = Chord(root(), CHORD_NAMES[cid].intervals).signature();
+			if ( chordsig == selfsig ) {
+				uint8_t root = std::countr_zero(chordsig);
+				return smf::Event::notename(root) + std::string(CHORD_NAMES[cid].name);
+			}
 		}
 		return "";
 	}
-*/
+
 	friend std::ostream & operator<<(std::ostream & out, const Chord & chord) {
 		std::bitset<12> elems(0ul);
 		out << "Chord[";
@@ -282,9 +316,10 @@ public:
 		for(const auto & d : chord.intervals) {
 			out << int(d) << ", ";
 		}
-		out << chord.signature;
 		*/
-		//out << chord.guess();
+		out << " (" << static_cast<unsigned long>(chord.signature()) << ") " ;
+
+		out << chord.name();
 		return out;
 	}
 
